@@ -61,9 +61,21 @@ elif menu == "Mutual Funds":
     scheme = st.text_input("Enter Mutual Fund Code (e.g., 120828)", "120828")
     if st.button("Fetch Fund"):
         mf = get_mutual_fund_data(scheme)
-        st.write(f"**{mf['fund_name']}**  \n🏦 {mf['fund_house']}  \n📊 Category: {mf['category']}")
-        nav_df = pd.DataFrame(mf["navs"])
-        st.line_chart(nav_df.set_index("date")["nav"])
+        if "error" in mf:
+            st.error(mf["error"])
+        else:
+            st.write(f"**{mf['fund_name']}**  \n🏦 {mf['fund_house']}  \n📊 Category: {mf['category']}")
+            st.write(f"⭐ Rating: {mf['rating']}")
+            st.write(f"📈 Risk: {mf['risk']}")
+            st.write(f"💰 Expense Ratio: {mf['expense_ratio']}")
+            st.write(f"🏦 AUM: {mf['aum']}")
+            st.write(f"💵 Dividend Info: {mf['dividend_info']}")
+            
+            # Plot NAV chart
+            nav_df = mf["nav_df"]
+            nav_df["nav"] = nav_df["nav"].astype(float)
+            nav_df["date"] = pd.to_datetime(nav_df["date"])
+            st.line_chart(nav_df.set_index("date")["nav"])
 
 # --- PORTFOLIO ---
 elif menu == "Portfolio":
