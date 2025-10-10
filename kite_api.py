@@ -1,29 +1,32 @@
+# kite_api.py
 from kiteconnect import KiteConnect
-import streamlit as st
+import yfinance as yf
+import os
 
-API_KEY = st.secrets["kite_api_key"]
-API_SECRET = st.secrets["kite_api_secret"]
+KITE_API_KEY = os.getenv("KITE_API_KEY")
+KITE_ACCESS_TOKEN = os.getenv("KITE_ACCESS_TOKEN")
 
-kite = KiteConnect(api_key=API_KEY)
-
-# --- Login URL Helper ---
-def get_login_url():
-    return kite.login_url()
-
-# --- Generate Access Token from Request Token ---
-def generate_access_token(request_token):
+kite = None
+if KITE_API_KEY and KITE_ACCESS_TOKEN:
     try:
-        data = kite.generate_session(request_token, api_secret=API_SECRET)
-        access_token = data["access_token"]
-        kite.set_access_token(access_token)
-        return access_token
+        kite = KiteConnect(api_key=KITE_API_KEY)
+        kite.set_access_token(KITE_ACCESS_TOKEN)
     except Exception as e:
-        return f"Error: {str(e)}"
+        print("Kite setup error:", e)
 
-# --- Live Quote ---
-def get_live_quote(symbol="RELIANCE"):
+def get_live_quote(symbol: str) -> float:
+    """Fetch live stock price; fallback to yFinance if Kite fails."""
     try:
-        instruments = kite.ltp(f"NSE:{symbol}")
-        return instruments[f"NSE:{symbol}"]["last_price"]
+        if kite:
+            quote = kite.ltp(f"NSE:{symbol}")
+            return quote[f"NSE:{symbol}"]["last_price"]
+        else:
+            raise Exception("Kite not configured")
     except Exception as e:
-        return f"Error fetching live quote: {str(e)}"
+        print("Falling back to yFinance:", e)
+        try:
+            data = yf.Ticker(symbol + ".NS").history(period="1d")
+            return round(float(data["Close"].iloc[-1]), 2)
+        except Exception as e2:
+            print("Fallback failed:", e2)
+            return 0.0
