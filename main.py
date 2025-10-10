@@ -71,11 +71,12 @@ elif menu == "Mutual Funds":
             st.write(f"🏦 AUM: {mf['aum']}")
             st.write(f"💵 Dividend Info: {mf['dividend_info']}")
             
-            # Plot NAV chart
+# Plot NAV chart
             nav_df = mf["nav_df"]
             nav_df["nav"] = nav_df["nav"].astype(float)
-            nav_df["date"] = pd.to_datetime(nav_df["date"])
+            nav_df["date"] = pd.to_datetime(nav_df["date"], dayfirst=True)  # <-- fixed
             st.line_chart(nav_df.set_index("date")["nav"])
+
 
 # --- PORTFOLIO ---
 elif menu == "Portfolio":
