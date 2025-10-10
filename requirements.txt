@@ -1,0 +1,8 @@
+streamlit
+kiteconnect
+yfinance
+pandas
+requests
+beautifulsoup4
+plotly
+openai==0.28

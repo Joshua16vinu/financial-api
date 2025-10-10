@@ -1,0 +1,68 @@
+# -------------------------
+# Python & Streamlit Project
+# -------------------------
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# Environment variables / secrets
+.env
+.env.*
+secrets.toml
+.streamlit/secrets.toml
+
+# Streamlit config cache
+.streamlit/config.toml
+.streamlit/credentials.toml
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor settings
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Reports and data outputs
+*.csv
+*.xlsx
+*.json
+
+# -------------------------
+# Custom
+# -------------------------
+# Ignore any local test data or backup folders
+test_data/
+backup/
