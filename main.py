@@ -122,7 +122,24 @@ elif menu == "AI Insights":
 # --- CHAT INTERFACE ---
 else:
     st.header("💬 Chat with Your Financial Agent")
+
+    # Text input for user message
     user_query = st.text_input("Ask me anything about your portfolio:")
-    if st.button("Send"):
+
+    # When user presses Enter or Send
+    if st.button("Send") and user_query.strip():
         response = ai_chat(user_query, context=str(portfolio))
-        st.write(response)
+        st.session_state.last_response = response
+
+    # --- Display chat history ---
+    if "chat_history" in st.session_state and st.session_state.chat_history:
+        for msg in st.session_state.chat_history:
+            if msg["role"] == "user":
+                st.markdown(f"**🧑‍💼 You:** {msg['content']}")
+            elif msg["role"] == "assistant":
+                st.markdown(f"**🤖 Assistant:** {msg['content']}")
+
+    # Show last response clearly
+    if st.session_state.get("last_response"):
+        st.write("---")
+        st.markdown(f"**💬 Latest Reply:** {st.session_state.last_response}")
