@@ -1,10 +1,11 @@
 import streamlit as st
 from openai import OpenAI
+from portfolio import get_portfolio_value
 
-# Initialize client
+# Initialize OpenAI client
 client = OpenAI(api_key=st.secrets["openai_api_key"])
 
-# --- Initialize Session State for Persistent Context ---
+# --- Session state for persistent context ---
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
@@ -13,14 +14,20 @@ if "context_memory" not in st.session_state:
 
 
 def add_to_context(new_context):
-    """Merge new financial data (like portfolio summary) into long-term context."""
+    """Merge new financial data (portfolio summary) into long-term context."""
     st.session_state.context_memory += f"\n{new_context}\n"
 
 
-def ai_portfolio_insights(portfolio_data):
-    """Generate AI insights for the portfolio and store them in context."""
+def ai_portfolio_insights():
+    """Automatically fetch live portfolio, generate insights, and store in context."""
+    portfolio_snapshot, total_value = get_portfolio_value()
     prompt = f"""
-My portfolio contains the following holdings from {portfolio_data}.
+My portfolio contains the following holdings:
+
+{portfolio_snapshot}
+
+Total portfolio value: ₹{total_value:,.2f}
+
 Please provide:
 
 1. Top Performers (Gainers) - show symbol, % gain, reason.
@@ -29,8 +36,6 @@ Please provide:
 4. Risk Assessment - low/moderate/high, and why.
 5. Actionable Summary - concise points suitable for dashboard cards.
 """
-
-
 
     response = client.chat.completions.create(
         model="gpt-4",
@@ -43,18 +48,22 @@ Please provide:
     return insights
 
 
-def ai_chat(user_query, extra_context=""):
+def ai_chat(user_query):
     """
     Chat interface for the financial assistant.
-    Optionally accepts extra context (e.g. current portfolio snapshot)
+    Automatically includes current portfolio context.
     """
-    combined_context = st.session_state.context_memory + f"\n{extra_context}"
+    # Include portfolio snapshot in extra context
+    portfolio_snapshot, _ = get_portfolio_value()
+    combined_context = st.session_state.context_memory + f"\nPortfolio Snapshot: {portfolio_snapshot}"
+
     system_prompt = f"""
-    You are a personalised financial assistant and you must give advice to analyse the portfolio . Use the following context to answer the question:
-    {combined_context}
-    """
+You are a personalised financial assistant. Use the following context to answer the question:
+{combined_context}
+"""
 
     messages = [{"role": "system", "content": system_prompt}]
+    # include last 5 chat messages
     for msg in st.session_state.chat_history[-5:]:
         messages.append(msg)
     messages.append({"role": "user", "content": user_query})
