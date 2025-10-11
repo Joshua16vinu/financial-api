@@ -17,7 +17,7 @@ def add_to_context(new_context):
     st.session_state.context_memory += f"\n{new_context}\n"
 
 
-def ai_portfolio_insights(portfolio_summary):
+def ai_portfolio_insights(portfolio_data):
     """Generate AI insights for the portfolio and store them in context."""
     prompt = f"""
 My portfolio contains the following holdings: {portfolio_data}.
