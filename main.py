@@ -59,6 +59,8 @@ if menu == "Stock Data":
 elif menu == "Mutual Funds":
     st.header("💼 Mutual Fund Insights")
 
+    st.info("Select a popular fund or enter any scheme code manually below:")
+
     popular_funds = {
         "Quant Small Cap Fund": "120828",
         "Parag Parikh Flexi Cap Fund": "118834",
@@ -67,8 +69,14 @@ elif menu == "Mutual Funds":
         "HDFC Mid-Cap Opportunities Fund": "119551"
     }
 
-    fund_name = st.selectbox("Choose a Mutual Fund", options=list(popular_funds.keys()))
-    scheme_code = popular_funds[fund_name]
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        fund_name = st.selectbox("Choose from popular funds:", list(popular_funds.keys()))
+    with col2:
+        scheme_code = st.text_input("Or enter a mutual fund code manually:", "")
+
+    if not scheme_code:
+        scheme_code = popular_funds[fund_name]
 
     if st.button("Fetch Fund"):
         mf = get_mutual_fund_data(scheme_code)

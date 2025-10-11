@@ -1,35 +1,51 @@
 import requests
 import pandas as pd
-import streamlit as st
 
-FMP_API_KEY = st.secrets.get("fmp_api_key", "YOUR_FMP_KEY")  # store in secrets.toml
+def get_mutual_fund_data(scheme_code="120828"):
+    """Fetch mutual fund data using mfapi.in and enrich with Value Research (if available)."""
+    try:
+        # --- Base data from mfapi.in ---
+        mf_url = f"https://api.mfapi.in/mf/{scheme_code}"
+        res = requests.get(mf_url).json()
 
-BASE_URL = "https://financialmodelingprep.com/api/v3"
+        if "meta" not in res or "data" not in res:
+            return {"error": "Invalid or missing mutual fund data."}
 
-# --- Historical Stock Data ---
-def get_historical_data(symbol="RELIANCE", period="6mo"):
-    url = f"{BASE_URL}/historical-price-full/{symbol}?apikey={FMP_API_KEY}"
-    res = requests.get(url).json()
-    if "historical" in res:
-        df = pd.DataFrame(res["historical"])
-        df["date"] = pd.to_datetime(df["date"])
-        # Keep last ~6 months
-        df = df.sort_values("date").set_index("date")
-        return df
-    return pd.DataFrame()
+        meta = res["meta"]
+        navs = res["data"][:30]
+        nav_df = pd.DataFrame(navs)
+        nav_df["date"] = pd.to_datetime(nav_df["date"], format="%d-%m-%Y", errors="coerce")
+        nav_df["nav"] = pd.to_numeric(nav_df["nav"], errors="coerce")
 
-# --- Company Info ---
-def get_company_info(symbol="RELIANCE"):
-    url = f"{BASE_URL}/profile/{symbol}?apikey={FMP_API_KEY}"
-    res = requests.get(url).json()
-    if res:
-        info = res[0]
+        # --- Optional enrichment from Value Research ---
+        enrichment = {}
+        try:
+            vr_url = f"https://api.valueresearchonline.com/funds/fund-performance?code={scheme_code}"
+            val = requests.get(vr_url, timeout=3).json()
+            if val:
+                enrichment = {
+                    "rating": val.get("rating", "N/A"),
+                    "risk": val.get("riskometer", "N/A"),
+                    "aum": val.get("aum", "N/A"),
+                    "expense_ratio": val.get("expenseRatio", "N/A"),
+                }
+        except Exception:
+            enrichment = {
+                "rating": "N/A",
+                "risk": "N/A",
+                "aum": "N/A",
+                "expense_ratio": "N/A",
+            }
+
+        # Combine both
         return {
-            "Name": info.get("companyName"),
-            "Sector": info.get("sector"),
-            "Market Cap": info.get("mktCap"),
-            "P/E Ratio": info.get("priceEarningsRatio"),
-            "52 Week High": info.get("range52WeekHigh"),
-            "52 Week Low": info.get("range52WeekLow"),
+            "fund_name": meta.get("scheme_name", "Unknown Fund"),
+            "fund_house": meta.get("fund_house", "Unknown AMC"),
+            "category": meta.get("scheme_category", "N/A"),
+            "dividend_info": meta.get("dividend_type", "N/A"),
+            "nav_df": nav_df,
+            **enrichment,
         }
-    return {}
+
+    except Exception as e:
+        return {"error": f"Failed to fetch mutual fund data: {str(e)}"}
