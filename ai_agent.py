@@ -35,35 +35,21 @@ def ai_portfolio_insights(portfolio_summary):
 
 
 def ai_chat(user_query, context=""):
-    """
-    Chat interface for the financial assistant.
-    Keeps memory + allows optional dynamic context.
-    """
-    # Append new contextual info (like portfolio or MF summary)
-    if context:
-        st.session_state.context_memory += f"\n{context}"
+    # Initialize context memory if it doesn't exist
+    if "context_memory" not in st.session_state:
+        st.session_state.context_memory = ""
 
-    # Prepare system + conversation messages
-    system_prompt = f"""
-    You are a financial assistant and you must help user analyse the portfolio. Use the following context for reasoning:
-    {st.session_state.context_memory}
-    """
+    # Append current portfolio/context to memory
+    st.session_state.context_memory += f"\n{context}"
 
-    messages = [{"role": "system", "content": system_prompt}]
-    for msg in st.session_state.chat_history[-5:]:
-        messages.append(msg)
-    messages.append({"role": "user", "content": user_query})
+    # Build prompt including previous memory
+    prompt = f"{st.session_state.context_memory}\nUser: {user_query}\nAssistant:"
 
     # Generate response
     response = client.chat.completions.create(
         model="gpt-4",
-        messages=messages,
-        temperature=0.5,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.5
     )
-    answer = response.choices[0].message.content
 
-    # Save to memory
-    st.session_state.chat_history.append({"role": "user", "content": user_query})
-    st.session_state.chat_history.append({"role": "assistant", "content": answer})
-
-    return answer
+    return response.choices[0].message.content
