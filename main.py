@@ -123,23 +123,27 @@ elif menu == "AI Insights":
 else:
     st.header("💬 Chat with Your Financial Agent")
 
-    # Text input for user message
+    # Initialize session state
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
     user_query = st.text_input("Ask me anything about your portfolio:")
 
-    # When user presses Enter or Send
+    # When user presses Send
     if st.button("Send") and user_query.strip():
-        response = ai_chat(user_query, context=str(portfolio))
-        st.session_state.last_response = response
+        # Add user query to chat history
+        st.session_state.chat_history.append({"role": "user", "content": user_query})
+
+        # Get AI response with context
+        response = ai_chat(user_query, str(portfolio))
+
+        # Add assistant response to chat history
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
 
     # --- Display chat history ---
-    if "chat_history" in st.session_state and st.session_state.chat_history:
-        for msg in st.session_state.chat_history:
-            if msg["role"] == "user":
-                st.markdown(f"**🧑‍💼 You:** {msg['content']}")
-            elif msg["role"] == "assistant":
-                st.markdown(f"**🤖 Assistant:** {msg['content']}")
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f"**🧑‍💼 You:** {msg['content']}")
+        elif msg["role"] == "assistant":
+            st.markdown(f"**🤖 Assistant:** {msg['content']}")
 
-    # Show last response clearly
-    if st.session_state.get("last_response"):
-        st.write("---")
-        st.markdown(f"**💬 Latest Reply:** {st.session_state.last_response}")
