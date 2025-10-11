@@ -58,24 +58,41 @@ if menu == "Stock Data":
 # --- MUTUAL FUNDS ---
 elif menu == "Mutual Funds":
     st.header("💼 Mutual Fund Insights")
-    scheme = st.text_input("Enter Mutual Fund Code (e.g., 120828)", "120828")
+
+    popular_funds = {
+        "Quant Small Cap Fund": "120828",
+        "Parag Parikh Flexi Cap Fund": "118834",
+        "Axis Bluechip Fund": "120465",
+        "SBI Small Cap Fund": "118834",
+        "HDFC Mid-Cap Opportunities Fund": "119551"
+    }
+
+    fund_name = st.selectbox("Choose a Mutual Fund", options=list(popular_funds.keys()))
+    scheme_code = popular_funds[fund_name]
+
     if st.button("Fetch Fund"):
-        mf = get_mutual_fund_data(scheme)
+        mf = get_mutual_fund_data(scheme_code)
+
         if "error" in mf:
             st.error(mf["error"])
         else:
-            st.write(f"**{mf['fund_name']}**  \n🏦 {mf['fund_house']}  \n📊 Category: {mf['category']}")
-            st.write(f"⭐ Rating: {mf['rating']}")
-            st.write(f"📈 Risk: {mf['risk']}")
-            st.write(f"💰 Expense Ratio: {mf['expense_ratio']}")
-            st.write(f"🏦 AUM: {mf['aum']}")
-            st.write(f"💵 Dividend Info: {mf['dividend_info']}")
-            
-# Plot NAV chart
-            nav_df = mf["nav_df"]
-            nav_df["nav"] = nav_df["nav"].astype(float)
-            nav_df["date"] = pd.to_datetime(nav_df["date"], dayfirst=True)  # <-- fixed
-            st.line_chart(nav_df.set_index("date")["nav"])
+            st.markdown(f"""
+            ### 🏦 {mf['fund_name']}
+            **Fund House:** {mf['fund_house']}  
+            **Category:** {mf['category']}  
+            ⭐ **Rating:** {mf['rating']}  
+            📈 **Risk:** {mf['risk']}  
+            💰 **Expense Ratio:** {mf['expense_ratio']}  
+            🏦 **AUM:** {mf['aum']}  
+            💵 **Dividend Info:** {mf['dividend_info']}  
+            """)
+
+            if not mf["nav_df"].empty:
+                st.subheader("📊 NAV Trend (Last 30 Days)")
+                st.line_chart(mf["nav_df"].set_index("date")["nav"])
+            else:
+                st.warning("No NAV data available for this scheme.")
+
 
 
 # --- PORTFOLIO ---
