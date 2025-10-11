@@ -21,7 +21,7 @@ def ai_portfolio_insights(portfolio_data):
     """Generate AI insights for the portfolio and store them in context."""
     prompt = f"""
 My portfolio contains the following holdings: {portfolio_data}.
-
+Dont mention i cannot provide real time data if you can't.
 Please provide:
 
 1. Top Performers (Gainers) - show symbol, % gain, reason.
@@ -29,8 +29,6 @@ Please provide:
 3. Rebalancing Suggestions - which stocks to buy more, sell, or hold.
 4. Risk Assessment - low/moderate/high, and why.
 5. Actionable Summary - concise points suitable for dashboard cards.
-
-Output in a structured JSON-like format for easy parsing.
 """
 
 
