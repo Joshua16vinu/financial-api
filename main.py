@@ -116,8 +116,9 @@ elif menu == "Portfolio":
 elif menu == "AI Insights":
     st.header("🧠 AI Portfolio Insights")
     if st.button("Get Insights"):
-        insights = ai_portfolio_insights(portfolio)
+        insights = ai_portfolio_insights()  # no argument here
         st.write(insights)
+
 
 # --- CHAT INTERFACE ---
 else:
