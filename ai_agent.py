@@ -31,19 +31,21 @@ def fetch_live_portfolio_data(portfolio):
         portfolio = portfolio.to_dict(orient="records")
 
     for stock in portfolio:
-        symbol = stock.get("symbol")
-        qty = stock.get("quantity", 0)
-        if not symbol:
-            continue  # skip invalid entries
         try:
+            symbol = stock.get("symbol")
+            qty = stock.get("quantity", 0)
+            if not symbol:
+                continue
+
             ticker = yf.Ticker(symbol + ".NS")
-            info = ticker.history(period="2d")  # get last 2 days for % change
-            if len(info) < 1:
-                raise ValueError("No data found")
-            last_price = float(info["Close"].iloc[-1])
-            prev_close = float(info["Close"].iloc[-2]) if len(info) > 1 else last_price
+            hist = ticker.history(period="2d")
+            if len(hist) < 1:
+                raise ValueError("No data found for symbol: " + symbol)
+            last_price = float(hist["Close"].iloc[-1])
+            prev_close = float(hist["Close"].iloc[-2]) if len(hist) > 1 else last_price
             change_pct = round((last_price - prev_close) / prev_close * 100, 2) if prev_close else 0
             market_value = last_price * qty
+
             live_data.append({
                 "symbol": symbol,
                 "quantity": qty,
@@ -53,13 +55,14 @@ def fetch_live_portfolio_data(portfolio):
             })
         except Exception as e:
             live_data.append({
-                "symbol": symbol,
-                "quantity": qty,
+                "symbol": stock.get("symbol", "Unknown"),
+                "quantity": stock.get("quantity", 0),
                 "last_price": None,
                 "change_pct": None,
                 "market_value": None,
                 "error": str(e)
             })
+
     return live_data
 
 
