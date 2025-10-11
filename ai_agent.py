@@ -39,25 +39,20 @@ def ai_portfolio_insights(portfolio_summary):
     return insights
 
 
-def ai_chat(user_query):
+def ai_chat(user_query, extra_context=""):
     """
     Chat interface for the financial assistant.
-    - Uses previous chat history and context_memory
-    - Adds each user+assistant exchange back into memory
+    Optionally accepts extra context (e.g. current portfolio snapshot)
     """
-    # Combine all relevant context (portfolio, mutual funds, history)
+    combined_context = st.session_state.context_memory + f"\n{extra_context}"
     system_prompt = f"""
-    You are a financial assistant. Use the following context to answer the question.
-    Context:
-    {st.session_state.context_memory}
+    You are a financial assistant. Use the following context to answer the question:
+    {combined_context}
     """
 
     messages = [{"role": "system", "content": system_prompt}]
-
-    # Include previous chat history for continuity
-    for msg in st.session_state.chat_history[-5:]:  # limit to last 5 exchanges
+    for msg in st.session_state.chat_history[-5:]:
         messages.append(msg)
-
     messages.append({"role": "user", "content": user_query})
 
     response = client.chat.completions.create(
@@ -67,9 +62,6 @@ def ai_chat(user_query):
     )
 
     answer = response.choices[0].message.content
-
-    # Save chat exchange in session state
     st.session_state.chat_history.append({"role": "user", "content": user_query})
     st.session_state.chat_history.append({"role": "assistant", "content": answer})
-
     return answer
