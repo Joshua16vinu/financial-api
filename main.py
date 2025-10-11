@@ -127,21 +127,29 @@ else:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # User input
+    # Sidebar for chat history
+    with st.sidebar:
+        st.subheader("💬 Chat History")
+        if st.session_state.chat_history:
+            for msg in st.session_state.chat_history:
+                role_emoji = "🧑‍💼" if msg["role"] == "user" else "🤖"
+                st.markdown(f"**{role_emoji} {msg['role'].capitalize()}:** {msg['content']}")
+        else:
+            st.info("No messages yet. Start the conversation!")
+
+    # User input in main panel
     user_query = st.text_input("Ask me anything about your portfolio:")
 
-    # Send button
     if st.button("Send") and user_query.strip():
-        # Add user message
+        # Add user query to chat history
         st.session_state.chat_history.append({"role": "user", "content": user_query})
 
-        # Get AI response with portfolio context
+        # Get AI response with context
         response = ai_chat(user_query, context=str(portfolio))
 
-        # Add assistant message
+        # Add assistant response to chat history
         st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-    # Display chat history
-    for msg in st.session_state.chat_history:
-        role_emoji = "🧑‍💼" if msg["role"] == "user" else "🤖"
-        st.markdown(f"**{role_emoji} {msg['role'].capitalize()}:** {msg['content']}")
+        # Show current exchange in main panel
+        st.markdown(f"**🧑‍💼 You:** {user_query}")
+        st.markdown(f"**🤖 Assistant:** {response}")
