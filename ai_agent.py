@@ -45,7 +45,7 @@ def ai_chat(user_query, context=""):
 
     # Prepare system + conversation messages
     system_prompt = f"""
-    You are a financial assistant. Use the following context for reasoning:
+    You are a financial assistant and you must help user analyse the portfolio. Use the following context for reasoning:
     {st.session_state.context_memory}
     """
 
