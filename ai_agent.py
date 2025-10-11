@@ -20,7 +20,7 @@ def add_to_context(new_context):
 def ai_portfolio_insights(portfolio_data):
     """Generate AI insights for the portfolio and store them in context."""
     prompt = f"""
-My portfolio contains the following holdings and their live data: {portfolio_data}.
+My portfolio contains the following holdings and their live data from yfinance api: {portfolio_data}.
 Please provide:
 
 1. Top Performers (Gainers) - show symbol, % gain, reason.
