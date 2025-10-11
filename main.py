@@ -123,27 +123,25 @@ elif menu == "AI Insights":
 else:
     st.header("💬 Chat with Your Financial Agent")
 
-    # Initialize session state
+    # Initialize chat history
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
+    # User input
     user_query = st.text_input("Ask me anything about your portfolio:")
 
-    # When user presses Send
+    # Send button
     if st.button("Send") and user_query.strip():
-        # Add user query to chat history
+        # Add user message
         st.session_state.chat_history.append({"role": "user", "content": user_query})
 
-        # Get AI response with context
-        response = ai_chat(user_query, str(portfolio))
+        # Get AI response with portfolio context
+        response = ai_chat(user_query, context=str(portfolio))
 
-        # Add assistant response to chat history
+        # Add assistant message
         st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-    # --- Display chat history ---
+    # Display chat history
     for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            st.markdown(f"**🧑‍💼 You:** {msg['content']}")
-        elif msg["role"] == "assistant":
-            st.markdown(f"**🤖 Assistant:** {msg['content']}")
-
+        role_emoji = "🧑‍💼" if msg["role"] == "user" else "🤖"
+        st.markdown(f"**{role_emoji} {msg['role'].capitalize()}:** {msg['content']}")
