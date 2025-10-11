@@ -32,7 +32,7 @@ def generate_access_token(request_token):
 
 # --- Live Quote with yFinance fallback ---
 def get_live_quote(symbol="RELIANCE"):
-    """Fetch live stock price; show Kite error to user and fallback to yFinance"""
+    """Fetch live stock price; show Kite error to user and fallback to FMP API"""
     # Try Kite first
     if kite:
         try:
@@ -45,8 +45,8 @@ def get_live_quote(symbol="RELIANCE"):
     try:
         data = yf.Ticker(symbol + ".NS").history(period="1d")
         price = round(float(data["Close"].iloc[-1]), 2)
-        st.info(f"Using yFinance fallback for {symbol}")
+        st.info(f"Using FMP API fallback for {symbol}")
         return price
     except Exception as e2:
-        st.error(f"yFinance fallback failed for {symbol}: {e2}")
+        st.error(f"API  fallback failed for {symbol}: {e2}")
         return 0.0
