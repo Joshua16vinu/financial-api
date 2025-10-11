@@ -21,17 +21,25 @@ def add_to_context(new_context):
 
 def fetch_live_portfolio_data(portfolio):
     """
-    portfolio: list of dicts, e.g.
-    [{"symbol": "RELIANCE", "quantity": 10}, {"symbol": "TCS", "quantity": 5}]
+    portfolio: list of dicts OR pandas DataFrame
     Returns portfolio with live price, % change, market value.
     """
     live_data = []
+
+    # Convert DataFrame to list of dicts if needed
+    if isinstance(portfolio, pd.DataFrame):
+        portfolio = portfolio.to_dict(orient="records")
+
     for stock in portfolio:
-        symbol = stock["symbol"]
+        symbol = stock.get("symbol")
         qty = stock.get("quantity", 0)
+        if not symbol:
+            continue  # skip invalid entries
         try:
             ticker = yf.Ticker(symbol + ".NS")
-            info = ticker.history(period="1d")
+            info = ticker.history(period="2d")  # get last 2 days for % change
+            if len(info) < 1:
+                raise ValueError("No data found")
             last_price = float(info["Close"].iloc[-1])
             prev_close = float(info["Close"].iloc[-2]) if len(info) > 1 else last_price
             change_pct = round((last_price - prev_close) / prev_close * 100, 2) if prev_close else 0
@@ -53,6 +61,7 @@ def fetch_live_portfolio_data(portfolio):
                 "error": str(e)
             })
     return live_data
+
 
 
 def ai_portfolio_insights(portfolio):
