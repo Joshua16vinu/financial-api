@@ -1,70 +1,51 @@
-import requests
+import streamlit as st
 import pandas as pd
-from bs4 import BeautifulSoup
+import requests
 
+# --- Fetch Data ---
 def get_mutual_fund_data(scheme_code="120828"):
-    """
-    Fetches extended mutual fund data: 
-    NAVs, Fund Rating, Risk Metrics, Expense Ratio, AUM, Dividend History
-    """
-    # --------------------------
-    # Step 1: Fetch NAV & basic meta from MFAPI
-    # --------------------------
     url = f"https://api.mfapi.in/mf/{scheme_code}"
     res = requests.get(url).json()
-    
-    if "meta" not in res:
-        return {"error": "Invalid scheme code or API error."}
+    meta = res.get("meta", {})
+    navs = res.get("data", [])[:30]
 
-    meta = res["meta"]
-    navs = res["data"][:5]  # last 5 NAVs
-    nav_df = pd.DataFrame(res["data"])
-    
-    fund_name = meta.get("scheme_name")
-    fund_house = meta.get("fund_house")
-    category = meta.get("scheme_category")
-    
-    # --------------------------
-    # Step 2: Scrape Value Research for ratings/metrics
-    # --------------------------
-    try:
-        vr_search_url = f"https://www.valueresearchonline.com/funds/{scheme_code}/mutual-fund-details"
-        vr_res = requests.get(vr_search_url)
-        soup = BeautifulSoup(vr_res.content, "html.parser")
-        
-        # Fund Rating (stars)
-        rating_tag = soup.select_one(".rating-stars img")
-        rating = rating_tag["alt"] if rating_tag else "N/A"
-        
-        # Risk Metrics
-        risk_tag = soup.find("div", text="Riskometer")
-        risk = risk_tag.find_next("div").text if risk_tag else "N/A"
-        
-        # Expense Ratio
-        expense_tag = soup.find("div", text="Expense Ratio")
-        expense_ratio = expense_tag.find_next("div").text if expense_tag else "N/A"
-        
-        # AUM
-        aum_tag = soup.find("div", text="Assets Under Management")
-        aum = aum_tag.find_next("div").text if aum_tag else "N/A"
-        
-        # Dividend Info
-        dividend_tag = soup.find("div", text="Dividend History")
-        dividend_info = dividend_tag.find_next("div").text if dividend_tag else "N/A"
-        
-    except Exception as e:
-        rating = risk = expense_ratio = aum = dividend_info = "N/A"
-        print("Value Research scrape failed:", e)
-    
+    nav_df = pd.DataFrame(navs)
+    nav_df["date"] = pd.to_datetime(nav_df["date"], format="%d-%m-%Y", errors="coerce")
+    nav_df["nav"] = pd.to_numeric(nav_df["nav"], errors="coerce")
+
     return {
-        "fund_name": fund_name,
-        "fund_house": fund_house,
-        "category": category,
-        "navs": navs,
-        "rating": rating,
-        "risk": risk,
-        "expense_ratio": expense_ratio,
-        "aum": aum,
-        "dividend_info": dividend_info,
-        "nav_df": nav_df,  # full NAV history for charts
+        "fund_name": meta.get("scheme_name", "Unknown Fund"),
+        "fund_house": meta.get("fund_house", "Unknown AMC"),
+        "category": meta.get("scheme_category", "N/A"),
+        "nav_df": nav_df
     }
+
+# --- Streamlit UI ---
+st.header("💼 Mutual Fund Insights")
+
+# Popular fund options for convenience
+popular_funds = {
+    "Quant Small Cap Fund": "120828",
+    "Parag Parikh Flexi Cap Fund": "118834",
+    "Axis Bluechip Fund": "120465",
+    "SBI Small Cap Fund": "118834",
+    "HDFC Mid-Cap Opportunities Fund": "119551"
+}
+
+fund_name = st.selectbox("Choose a Mutual Fund", options=list(popular_funds.keys()))
+scheme_code = popular_funds[fund_name]
+
+if st.button("Fetch Fund Data"):
+    mf = get_mutual_fund_data(scheme_code)
+
+    st.markdown(f"""
+    ### 🏦 {mf['fund_name']}
+    **Fund House:** {mf['fund_house']}  
+    **Category:** {mf['category']}
+    """)
+
+    if not mf["nav_df"].empty:
+        st.subheader("📈 NAV Trend (Last 30 Days)")
+        st.line_chart(mf["nav_df"].set_index("date")["nav"])
+    else:
+        st.warning("No NAV data available.")
