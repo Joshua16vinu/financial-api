@@ -127,17 +127,19 @@ else:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Sidebar for chat history
+    # Sidebar for chat history (questions only)
     with st.sidebar:
         st.subheader("💬 Chat History")
         if st.session_state.chat_history:
-            for msg in st.session_state.chat_history:
-                role_emoji = "🧑‍💼" if msg["role"] == "user" else "🤖"
-                st.markdown(f"**{role_emoji} {msg['role'].capitalize()}:** {msg['content']}")
+            for i, msg in enumerate(st.session_state.chat_history):
+                if msg["role"] == "user":
+                    # Button/expander for each question
+                    if st.button(msg["content"], key=f"q_{i}"):
+                        st.session_state.selected_question_index = i
         else:
             st.info("No messages yet. Start the conversation!")
 
-    # User input in main panel
+    # Main panel: show input box
     user_query = st.text_input("Ask me anything about your portfolio:")
 
     if st.button("Send") and user_query.strip():
@@ -150,6 +152,17 @@ else:
         # Add assistant response to chat history
         st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-        # Show current exchange in main panel
+        # Show latest exchange in main panel
         st.markdown(f"**🧑‍💼 You:** {user_query}")
         st.markdown(f"**🤖 Assistant:** {response}")
+
+    # If a question from sidebar is clicked, show that Q&A
+    if "selected_question_index" in st.session_state:
+        idx = st.session_state.selected_question_index
+        user_msg = st.session_state.chat_history[idx]["content"]
+        assistant_msg = st.session_state.chat_history[idx + 1]["content"]
+        st.markdown("---")
+        st.markdown(f"### 📌 Selected Question & Answer")
+        st.markdown(f"**🧑‍💼 You:** {user_msg}")
+        st.markdown(f"**🤖 Assistant:** {assistant_msg}")
+
