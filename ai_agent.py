@@ -20,33 +20,19 @@ def add_to_context(new_context):
 def ai_portfolio_insights(portfolio_summary):
     """Generate AI insights for the portfolio and store them in context."""
     prompt = f"""
-My portfolio currently contains the following holdings: {portfolio_summary}.
+My portfolio contains the following holdings: {portfolio_data}.
 
-Please provide a detailed yet concise analysis including:
+Please provide:
 
-1. **Top Performers (Gainers)**:
-   - List the assets/stocks/mutual funds that have shown the highest positive performance over the past period.
-   - Include percentage gains and why they might have performed well.
+1. Top Performers (Gainers) - show symbol, % gain, reason.
+2. Underperformers (Losers) - show symbol, % loss, reason.
+3. Rebalancing Suggestions - which stocks to buy more, sell, or hold.
+4. Risk Assessment - low/moderate/high, and why.
+5. Actionable Summary - concise points suitable for dashboard cards.
 
-2. **Underperformers (Losers)**:
-   - List the assets/stocks/mutual funds that have underperformed relative to the rest of the portfolio.
-   - Include percentage losses and potential reasons.
-
-3. **Rebalancing Recommendations**:
-   - Suggest actions to optimize portfolio allocation.
-   - Highlight opportunities to reduce risk or improve returns.
-   - Suggest diversification if the portfolio is heavily concentrated in certain sectors or asset classes.
-
-4. **Risk Assessment**:
-   - Provide a brief view of the portfolio's current risk profile (conservative, moderate, aggressive).
-   - Highlight any high-risk concentrations or overexposure.
-
-5. **Actionable Summary**:
-   - Provide concise, easy-to-understand recommendations suitable for dashboard display.
-   - Format clearly so each section can be displayed as a separate card/widget.
-
-Please present the output in **human-readable, structured format**, keeping it suitable for quick review on a financial dashboard.
+Output in a structured JSON-like format for easy parsing.
 """
+
 
 
     response = client.chat.completions.create(
