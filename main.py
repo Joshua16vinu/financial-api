@@ -116,35 +116,53 @@ elif menu == "Portfolio":
 elif menu == "AI Insights":
     st.header("🧠 AI Portfolio Insights")
     if st.button("Get Insights"):
-        insights = ai_portfolio_insights()  # no argument here
+        insights = ai_portfolio_insights(portfolio)
         st.write(insights)
-
 
 # --- CHAT INTERFACE ---
 else:
     st.header("💬 Chat with Your Financial Agent")
 
-    # Initialize session state
+    # Initialize chat history
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
+    # Sidebar for chat history (questions only)
+    with st.sidebar:
+        st.subheader("💬 Chat History")
+        if st.session_state.chat_history:
+            for i, msg in enumerate(st.session_state.chat_history):
+                if msg["role"] == "user":
+                    # Button/expander for each question
+                    if st.button(msg["content"], key=f"q_{i}"):
+                        st.session_state.selected_question_index = i
+        else:
+            st.info("No messages yet. Start the conversation!")
+
+    # Main panel: show input box
     user_query = st.text_input("Ask me anything about your portfolio:")
 
-    # When user presses Send
     if st.button("Send") and user_query.strip():
         # Add user query to chat history
         st.session_state.chat_history.append({"role": "user", "content": user_query})
 
         # Get AI response with context
-        response = ai_chat(user_query, str(portfolio))
+        response = ai_chat(user_query, context=str(portfolio))
 
         # Add assistant response to chat history
         st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-    # --- Display chat history ---
-    for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            st.markdown(f"**🧑‍💼 You:** {msg['content']}")
-        elif msg["role"] == "assistant":
-            st.markdown(f"**🤖 Assistant:** {msg['content']}")
+        # Show latest exchange in main panel
+        st.markdown(f"**🧑‍💼 You:** {user_query}")
+        st.markdown(f"**🤖 Assistant:** {response}")
+
+    # If a question from sidebar is clicked, show that Q&A
+    if "selected_question_index" in st.session_state:
+        idx = st.session_state.selected_question_index
+        user_msg = st.session_state.chat_history[idx]["content"]
+        assistant_msg = st.session_state.chat_history[idx + 1]["content"]
+        st.markdown("---")
+        st.markdown(f"### 📌 Selected Question & Answer")
+        st.markdown(f"**🧑‍💼 You:** {user_msg}")
+        st.markdown(f"**🤖 Assistant:** {assistant_msg}")
 
