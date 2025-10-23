@@ -1,65 +1,64 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from kite_api import get_live_quote, get_login_url, generate_access_token
-# from yfinance_api import get_historical_data, get_company_info
+
+from kite_api import get_login_url, generate_access_token, get_positions
 from fmp_api import get_historical_data, get_company_info
 from mf_api import get_mutual_fund_data
-from portfolio import portfolio, get_portfolio_value
 from ai_agent import ai_portfolio_insights, ai_chat
 
 st.set_page_config(page_title="Smart Financial Assistant", layout="wide")
-st.title("💰 Financial Assistant Dashboard")
+st.title("💹 Smart Financial Assistant")
 
-# --- Kite Connect Authentication ---
-st.sidebar.header("🔑 Kite Connect Auth")
+# --- SIDEBAR: Kite Authentication ---
+st.sidebar.header("🔑 Kite Connect Authentication")
+
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
-st.sidebar.markdown("1️⃣ Click login and paste request token:")
 if st.sidebar.button("Open Kite Login URL"):
-    st.write(f"[Click here to login]({get_login_url()})")
+    login_url = get_login_url()
+    if "Error" not in login_url:
+        st.sidebar.markdown(f"[Click here to login]({login_url})")
+    else:
+        st.sidebar.error(login_url)
 
-request_token_input = st.sidebar.text_input("Paste Request Token here:")
+request_token_input = st.sidebar.text_input("Paste your Request Token:")
+
 if st.sidebar.button("Generate Access Token") and request_token_input:
     token = generate_access_token(request_token_input)
     if "Error" in token:
-        st.error(token)
+        st.sidebar.error(token)
     else:
-        st.session_state["access_token"] = token
-        st.success("Access Token generated successfully!")
+        st.sidebar.success("Access Token generated successfully!")
 
-menu = st.sidebar.radio("Select Section", ["Stock Data", "Mutual Funds", "Portfolio", "AI Insights", "Chat"])
+menu = st.sidebar.radio("Navigate", ["Stock Data", "Mutual Funds", "Portfolio (Kite)", "AI Insights", "Chat"])
 
-# --- STOCK DATA ---
+# --- STOCK DATA (FMP API) ---
 if menu == "Stock Data":
-    st.header("📈 Stock Overview")
-    symbol = st.text_input("Enter NSE Symbol (e.g., RELIANCE)", "RELIANCE")
-    if st.button("Fetch Data"):
-        # Fetch live quote only if access token exists
-        if st.session_state.get("access_token"):
-            live = get_live_quote(symbol)
-            if isinstance(live, str) and live.startswith("Error"):
-                st.error(live)
-            else:
-                st.metric(label=f"Live Price of {symbol}", value=f"₹{live}")
-        else:
-            st.warning("Generate Kite Access Token first in sidebar!")
+    st.header("📈 Stock Overview (via FMP)")
+    symbol = st.text_input("Enter NSE Symbol (e.g., RELIANCE):", "RELIANCE")
 
-        info = get_company_info(symbol + ".NS")
+    if st.button("Fetch Stock Data"):
         st.subheader("Company Information")
-        st.write(info)
+        info = get_company_info(symbol + ".NS")
+        if info:
+            st.write(info)
+        else:
+            st.warning("No company info available.")
 
-        data = get_historical_data(symbol + ".NS", period="6mo")
-        st.subheader("Price Trend")
-        fig = px.line(data, x=data.index, y="close", title=f"{symbol} - Last 6 Months")
-        st.plotly_chart(fig, use_container_width=True)
+        st.subheader("Historical Price Trend (6 Months)")
+        df = get_historical_data(symbol + ".NS")
+        if not df.empty:
+            fig = px.line(df, x=df.index, y="close", title=f"{symbol} - Last 6 Months")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("No historical data available.")
 
-# --- MUTUAL FUNDS ---
+# --- MUTUAL FUND SECTION ---
 elif menu == "Mutual Funds":
     st.header("💼 Mutual Fund Insights")
-
-    st.info("Select a popular fund or enter any scheme code manually below:")
+    st.info("Select a popular fund or enter a scheme code below.")
 
     popular_funds = {
         "Quant Small Cap Fund": "120828",
@@ -80,7 +79,6 @@ elif menu == "Mutual Funds":
 
     if st.button("Fetch Fund"):
         mf = get_mutual_fund_data(scheme_code)
-
         if "error" in mf:
             st.error(mf["error"])
         else:
@@ -101,50 +99,32 @@ elif menu == "Mutual Funds":
             else:
                 st.warning("No NAV data available for this scheme.")
 
-
-
-# --- PORTFOLIO ---
-elif menu == "Portfolio":
-    st.header("📊 Portfolio Summary (Stocks + MFs)")
-    st.info("Simulated unified view combining stock and mutual fund data.")
-    df_list, total_value = get_portfolio_value(portfolio)
-    df = pd.DataFrame(df_list)
-    st.dataframe(df)
-    st.success(f"💵 Total Portfolio Value: ₹{total_value:,.2f}")
+# --- PORTFOLIO (Kite API Positions) ---
+elif menu == "Portfolio (Kite)":
+    st.header("📊 Your Live Portfolio (Kite Positions)")
+    if "access_token" not in st.session_state or not st.session_state["access_token"]:
+        st.warning("Please generate Kite access token first.")
+    else:
+        positions = get_positions()
+        st.dataframe(positions)
 
 # --- AI INSIGHTS ---
 elif menu == "AI Insights":
     st.header("🧠 AI Portfolio Insights")
-    if st.button("Get Insights"):
-        insights = ai_portfolio_insights()  # no argument here
+    if st.button("Generate Insights"):
+        insights = ai_portfolio_insights("current portfolio holdings")
         st.write(insights)
 
-
-# --- CHAT INTERFACE ---
+# --- CHAT ---
 else:
-    st.header("💬 Chat with Your Financial Agent")
-
-    # Initialize session state
+    st.header("💬 Chat with Financial Assistant")
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    user_query = st.text_input("Ask me anything about your portfolio:")
-
-    # When user presses Send
+    user_query = st.text_input("Ask your question:")
     if st.button("Send") and user_query.strip():
-        # Add user query to chat history
+        response = ai_chat(user_query)
         st.session_state.chat_history.append({"role": "user", "content": user_query})
-
-        # Get AI response with context
-        response = ai_chat(user_query, str(portfolio))
-
-        # Add assistant response to chat history
         st.session_state.chat_history.append({"role": "assistant", "content": response})
-
-    # --- Display chat history ---
-    for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            st.markdown(f"**🧑‍💼 You:** {msg['content']}")
-        elif msg["role"] == "assistant":
-            st.markdown(f"**🤖 Assistant:** {msg['content']}")
-
+        st.markdown(f"**You:** {user_query}")
+        st.markdown(f"**Assistant:** {response}")
