@@ -29,7 +29,9 @@ if st.sidebar.button("Generate Access Token") and request_token_input:
         st.session_state["access_token"] = token
         st.success("Access Token generated successfully!")
 
-menu = st.sidebar.radio("Select Section", ["Stock Data", "Mutual Funds", "Portfolio", "AI Insights", "Chat"])
+menu = st.sidebar.radio("Select Section", [
+    "Stock Data", "Mutual Funds", "Portfolio", "AI Insights", "Chat", "Kite Tools"
+])
 
 # --- STOCK DATA ---
 if menu == "Stock Data":
@@ -118,6 +120,56 @@ elif menu == "AI Insights":
     if st.button("Get Insights"):
         insights = ai_portfolio_insights(portfolio)
         st.write(insights)
+
+elif menu == "Kite Tools":
+    st.header("🪁 Zerodha Kite Tools")
+    st.info("Manage orders, positions, GTTs, margins, and alerts directly here.")
+
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Place Order", "Positions", "GTT Orders", "Alerts", "Margins"])
+
+    with tab1:
+        st.subheader("📤 Place Order")
+        symbol = st.text_input("Symbol (e.g., RELIANCE)")
+        qty = st.number_input("Quantity", 1, 1000, 1)
+        order_type = st.selectbox("Order Type", ["MARKET", "LIMIT"])
+        trans_type = st.selectbox("Transaction", ["BUY", "SELL"])
+        price = st.number_input("Price (for LIMIT orders)", 0.0)
+        if st.button("Submit Order"):
+            res = place_order(symbol, qty, order_type, trans_type, price)
+            st.write(res)
+
+    with tab2:
+        st.subheader("📊 Positions & Holdings")
+        st.write(get_positions())
+        st.write(get_holdings())
+        st.write(get_funds())
+
+    with tab3:
+        st.subheader("📆 Manage GTT Orders")
+        sym = st.text_input("Symbol for GTT")
+        trg_price = st.number_input("Trigger Price", 0.0)
+        qty = st.number_input("Quantity", 1)
+        if st.button("Create GTT"):
+            res = create_gtt(sym, trg_price, qty)
+            st.write(res)
+        st.write("Existing GTT Orders:")
+        st.json(list_gtt_orders())
+
+    with tab4:
+        st.subheader("⏰ Price Alerts")
+        sym = st.text_input("Alert Symbol")
+        alert_price = st.number_input("Alert Price", 0.0)
+        note = st.text_input("Note", "Price Alert")
+        if st.button("Add Alert"):
+            st.success(create_alert(sym, alert_price, note))
+        st.write(get_alerts())
+
+    with tab5:
+        st.subheader("💰 Margin Requirement Check")
+        sym = st.text_input("Symbol for Margin Check", "RELIANCE")
+        qty = st.number_input("Quantity for Margin", 1)
+        res = get_margin_requirements(sym, qty)
+        st.json(res)
 
 # --- CHAT INTERFACE ---
 else:
