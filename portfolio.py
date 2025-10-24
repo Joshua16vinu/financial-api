@@ -51,6 +51,7 @@ def show_portfolio_summary():
             st.dataframe(df, use_container_width=True)
 
     # --- Tab 2: Positions ---
+    # --- Tab 2: Positions ---
     with tabs[1]:
         st.subheader("Positions")
 
@@ -60,35 +61,41 @@ def show_portfolio_summary():
             st.error(f"Error fetching positions: {e}")
             positions = []
 
-        if not isinstance(positions, list):
+        if isinstance(positions, dict):
             positions = [positions]
 
         if not positions:
             st.info("No positions found.")
         else:
-            data = []
-            for p in positions:
-                symbol = p.get("tradingsymbol") or p.get("symbol")
-                qty = p.get("quantity", 0)
-                last_price = p.get("last_price", 0) or 0
+            df = pd.DataFrame(positions)
+            useful_cols = [
+                "tradingsymbol", "quantity", "average_price", "last_price",
+                "pnl", "product"
+            ]
+            df = df[[c for c in useful_cols if c in df.columns]]
 
-                # ✅ fallback via FMP
-                if not last_price or last_price == 0:
-                    last_price = get_latest_price(symbol)
+            df.rename(columns={
+                "tradingsymbol": "Symbol",
+                "quantity": "Quantity",
+                "average_price": "Avg Price (₹)",
+                "last_price": "Last Price (₹)",
+                "pnl": "Profit/Loss (₹)",
+                "product": "Product"
+            }, inplace=True)
 
-                value = qty * last_price
-                data.append({
-                    "Symbol": symbol,
-                    "Quantity": qty,
-                    "Last Price (₹)": round(last_price, 2),
-                    "Value (₹)": round(value, 2),
-                })
+            st.metric("Open Positions", len(df))
+            st.metric("Net P&L (₹)", f"{df['Profit/Loss (₹)'].sum():,.2f}")
 
-            df = pd.DataFrame(data)
-            total_value = df["Value (₹)"].sum()
-
-            st.metric("Total Positions Value (₹)", f"{total_value:,.2f}")
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(
+                df.style.format({
+                    "Avg Price (₹)": "₹{:.2f}",
+                    "Last Price (₹)": "₹{:.2f}",
+                    "Profit/Loss (₹)": "₹{:.2f}"
+                }).background_gradient(
+                    subset=["Profit/Loss (₹)"], cmap="RdYlGn"
+                ),
+                use_container_width=True
+            )
 
         # --- Tab 3: Summary ---
     with tabs[2]:
