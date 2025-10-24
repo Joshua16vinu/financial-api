@@ -1,156 +1,163 @@
 import streamlit as st
 from kiteconnect import KiteConnect
-import pandas as pd
+import requests
 
-# -------------------------------------
-# 🔐 Initialize Kite client safely
-# -------------------------------------
-def get_kite_client():
-    try:
-        api_key = st.secrets["kite_api_key"]
-        kite = KiteConnect(api_key=api_key)
-        access_token = st.session_state.get("access_token")
+# --- Load from secrets ---
+API_KEY = st.secrets.get("kite_api_key")
+API_SECRET = st.secrets.get("kite_api_secret")
 
-        if access_token:
-            kite.set_access_token(access_token)
-        else:
-            st.warning("⚠️ No access token found. Please authenticate via sidebar.")
-        return kite
-    except Exception as e:
-        st.error(f"Error initializing Kite client: {e}")
-        return None
+# --- Global Kite instance (initialized later) ---
+kite = None
 
 
-# -------------------------------------
-# 🔑 Authentication
-# -------------------------------------
+# -----------------------------
+# 🔑 AUTHENTICATION
+# -----------------------------
 def get_login_url():
-    kite = KiteConnect(api_key=st.secrets["kite_api_key"])
+    """Generate login URL for Kite authentication."""
+    global kite
+    kite = KiteConnect(api_key=API_KEY)
     return kite.login_url()
 
 
-def generate_access_token(request_token):
+def generate_access_token(request_token: str):
+    """Exchange request token for access token."""
+    global kite
     try:
-        kite = KiteConnect(api_key=st.secrets["kite_api_key"])
-        data = kite.generate_session(request_token, api_secret=st.secrets["kite_api_secret"])
-        return data["access_token"]
+        if kite is None:
+            kite = KiteConnect(api_key=API_KEY)
+        data = kite.generate_session(request_token, api_secret=API_SECRET)
+        access_token = data["access_token"]
+        kite.set_access_token(access_token)
+        st.session_state["access_token"] = access_token
+        return access_token
     except Exception as e:
-        return f"Error generating token: {e}"
+        return f"Error generating access token: {e}"
 
 
-# -------------------------------------
-# 📊 Core Account Info
-# -------------------------------------
-def get_positions():
-    kite = get_kite_client()
-    if not kite:
-        return []
+# -----------------------------
+# 💹 LIVE QUOTES & MARKET DATA
+# -----------------------------
+def get_live_quote(symbol):
+    """Fetch live price for a symbol."""
     try:
-        data = kite.positions()
-        return data.get("net", [])
+        if kite is None:
+            return "Not authenticated"
+        quote = kite.ltp(f"NSE:{symbol}")
+        return quote[f"NSE:{symbol}"]["last_price"]
     except Exception as e:
-        st.error(f"Error fetching positions: {e}")
-        return []
+        return f"Error fetching quote: {e}"
 
 
+# -----------------------------
+# 📊 PORTFOLIO DATA
+# -----------------------------
 def get_holdings():
-    kite = get_kite_client()
-    if not kite:
-        return []
+    """Fetch user holdings."""
     try:
+        if kite is None:
+            return []
         return kite.holdings()
     except Exception as e:
-        st.error(f"Error fetching holdings: {e}")
-        return []
+        return {"error": str(e)}
+
+
+def get_positions():
+    """Fetch user positions."""
+    try:
+        if kite is None:
+            return []
+        return kite.positions()["net"]
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def get_funds():
-    kite = get_kite_client()
-    if not kite:
-        return {}
+    """Fetch available funds/margins."""
     try:
+        if kite is None:
+            return {}
         return kite.margins()
     except Exception as e:
-        st.error(f"Error fetching funds: {e}")
-        return {}
+        return {"error": str(e)}
 
 
-# -------------------------------------
-# 💸 Trading & Orders
-# -------------------------------------
-def place_order(symbol, qty, order_type, trans_type, price=0.0):
-    kite = get_kite_client()
-    if not kite:
-        return "Client not initialized"
-
+# -----------------------------
+# 🧾 ORDER PLACEMENT
+# -----------------------------
+def place_order(symbol, qty, order_type, trans_type, price=0):
+    """Place a buy/sell order."""
     try:
+        if kite is None:
+            return {"error": "Not authenticated"}
         order_id = kite.place_order(
-            tradingsymbol=symbol,
+            variety="regular",
             exchange="NSE",
+            tradingsymbol=symbol,
             transaction_type=trans_type,
-            quantity=qty,
+            quantity=int(qty),
             order_type=order_type,
             product="CNC",
-            price=price if order_type == "LIMIT" else None,
+            price=float(price),
         )
-        return f"✅ Order placed successfully! Order ID: {order_id}"
+        return {"success": True, "order_id": order_id}
     except Exception as e:
-        return f"Error placing order: {e}"
+        return {"error": str(e)}
 
 
-# -------------------------------------
-# 🎯 GTT Orders & Alerts
-# -------------------------------------
+# -----------------------------
+# ⏰ GTT ORDERS
+# -----------------------------
 def create_gtt(symbol, trigger_price, qty):
-    kite = get_kite_client()
-    if not kite:
-        return "Client not initialized"
     try:
-        return kite.place_gtt(
+        if kite is None:
+            return {"error": "Not authenticated"}
+        gtt = kite.place_gtt(
             trigger_type="single",
             tradingsymbol=symbol,
             exchange="NSE",
-            trigger_values=[trigger_price],
+            trigger_values=[float(trigger_price)],
             last_price=trigger_price,
             orders=[{
                 "transaction_type": "BUY",
-                "quantity": qty,
-                "price": trigger_price
-            }]
+                "quantity": int(qty),
+                "price": float(trigger_price)
+            }],
         )
+        return {"success": True, "gtt_id": gtt}
     except Exception as e:
-        return f"Error creating GTT: {e}"
+        return {"error": str(e)}
 
 
 def list_gtt_orders():
-    kite = get_kite_client()
-    if not kite:
-        return []
     try:
-        return kite.gtts()
+        if kite is None:
+            return []
+        return kite.get_gtts()
     except Exception as e:
-        st.error(f"Error fetching GTT orders: {e}")
-        return []
+        return {"error": str(e)}
 
 
-def create_alert(symbol, alert_price, note):
-    return f"Alert set for {symbol} at ₹{alert_price} ({note})"
+# -----------------------------
+# ⚡ ALERTS & MARGINS
+# -----------------------------
+def create_alert(symbol, price, note):
+    """Create a mock alert (not real Kite alert)."""
+    return {"symbol": symbol, "price": price, "note": note}
 
 
 def get_alerts():
-    return [{"symbol": "RELIANCE", "alert_price": 2500, "note": "Test alert"}]
+    """List alerts from session."""
+    return st.session_state.get("alerts", [])
 
 
-# -------------------------------------
-# 💰 Margin Requirements
-# -------------------------------------
 def get_margin_requirements(symbol, qty):
-    """
-    Fetch order margin requirements for a stock using KiteConnect.
-    Compatible with latest kiteconnect API (v4+).
-    """
+    """Check margin requirement using latest Kite API format."""
+    global kite
     try:
-        # ✅ Modern API call format (list of dicts)
+        if kite is None:
+            return {"error": "Not authenticated"}
+
         order_data = [{
             "exchange": "NSE",
             "tradingsymbol": symbol,
@@ -165,18 +172,3 @@ def get_margin_requirements(symbol, qty):
         return margin
     except Exception as e:
         return {"error": f"Error checking margin: {e}"}
-
-
-# -------------------------------------
-# 📈 Live Quotes
-# -------------------------------------
-def get_live_quote(symbol):
-    kite = get_kite_client()
-    if not kite:
-        return 0.0
-    try:
-        quote = kite.ltp(f"NSE:{symbol}")
-        return quote[f"NSE:{symbol}"]["last_price"]
-    except Exception as e:
-        st.error(f"Error fetching quote for {symbol}: {e}")
-        return 0.0
