@@ -20,52 +20,35 @@ def show_portfolio_summary():
             st.error(f"Error fetching holdings: {e}")
             holdings = []
 
-        if isinstance(holdings, dict):
+        if not isinstance(holdings, list):
             holdings = [holdings]
 
         if not holdings:
             st.info("No holdings found.")
         else:
-            df = pd.DataFrame(holdings)
+            data = []
+            for h in holdings:
+                symbol = h.get("tradingsymbol") or h.get("symbol")
+                qty = h.get("quantity", 0)
+                last_price = h.get("last_price", 0) or 0
 
-            # Select only relevant columns if available
-            useful_cols = [
-                "tradingsymbol", "quantity", "average_price", "last_price",
-                "pnl", "instrument_token"
-            ]
-            df = df[[c for c in useful_cols if c in df.columns]]
+                # ✅ fallback via FMP
+                if not last_price or last_price == 0:
+                    last_price = get_latest_price(symbol)
 
-            # Rename for clarity
-            df.rename(columns={
-                "tradingsymbol": "Symbol",
-                "quantity": "Quantity",
-                "average_price": "Avg Price (₹)",
-                "last_price": "Last Price (₹)",
-                "pnl": "Profit/Loss (₹)"
-            }, inplace=True)
+                value = qty * last_price
+                data.append({
+                    "Symbol": symbol,
+                    "Quantity": qty,
+                    "Last Price (₹)": round(last_price, 2),
+                    "Value (₹)": round(value, 2),
+                })
 
-            # Add computed value
-            if "Quantity" in df.columns and "Last Price (₹)" in df.columns:
-                df["Current Value (₹)"] = df["Quantity"] * df["Last Price (₹)"]
+            df = pd.DataFrame(data)
+            total_value = df["Value (₹)"].sum()
 
-            # Display metrics
-            st.metric("Total Holdings", len(df))
-            st.metric("Total Value (₹)", f"{df['Current Value (₹)'].sum():,.2f}")
-            st.metric("Net P&L (₹)", f"{df['Profit/Loss (₹)'].sum():,.2f}")
-
-            # Styled dataframe
-            st.dataframe(
-                df.style.format({
-                    "Avg Price (₹)": "₹{:.2f}",
-                    "Last Price (₹)": "₹{:.2f}",
-                    "Profit/Loss (₹)": "₹{:.2f}",
-                    "Current Value (₹)": "₹{:.2f}"
-                }).background_gradient(
-                    subset=["Profit/Loss (₹)"], cmap="RdYlGn"
-                ),
-                use_container_width=True
-            )
-
+            st.metric("Total Holdings Value (₹)", f"{total_value:,.2f}")
+            st.dataframe(df, use_container_width=True)
 
     # --- Tab 2: Positions ---
     with tabs[1]:
