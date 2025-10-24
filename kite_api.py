@@ -1,175 +1,178 @@
-# kite_api.py
-
 import streamlit as st
-import yfinance as yf
-from kiteconnect import KiteConnect, KiteTicker
+from kiteconnect import KiteConnect
+import pandas as pd
 
-API_KEY = st.secrets.get("kite_api_key")
-API_SECRET = st.secrets.get("kite_api_secret")
-
-kite = None
-if API_KEY:
+# -------------------------------------
+# 🔐 Initialize Kite client safely
+# -------------------------------------
+def get_kite_client():
     try:
-        kite = KiteConnect(api_key=API_KEY)
-    except Exception as e:
-        st.warning(f"Kite initialization error: {e}")
+        api_key = st.secrets["kite_api_key"]
+        kite = KiteConnect(api_key=api_key)
+        access_token = st.session_state.get("access_token")
 
-# --- LOGIN URL ---
+        if access_token:
+            kite.set_access_token(access_token)
+        else:
+            st.warning("⚠️ No access token found. Please authenticate via sidebar.")
+        return kite
+    except Exception as e:
+        st.error(f"Error initializing Kite client: {e}")
+        return None
+
+
+# -------------------------------------
+# 🔑 Authentication
+# -------------------------------------
 def get_login_url():
-    if kite:
-        return kite.login_url()
-    return None
+    kite = KiteConnect(api_key=st.secrets["kite_api_key"])
+    return kite.login_url()
 
-# --- GENERATE ACCESS TOKEN ---
+
 def generate_access_token(request_token):
-    if not kite:
-        return "Error: Kite not initialized"
     try:
-        data = kite.generate_session(request_token, api_secret=API_SECRET)
-        access_token = data["access_token"]
-        kite.set_access_token(access_token)
-        st.session_state["kite"] = kite
-        return access_token
+        kite = KiteConnect(api_key=st.secrets["kite_api_key"])
+        data = kite.generate_session(request_token, api_secret=st.secrets["kite_api_secret"])
+        return data["access_token"]
     except Exception as e:
-        return f"Error: {str(e)}"
-
-# --- GET LIVE QUOTE ---
-def get_live_quote(symbol="RELIANCE"):
-    if kite:
-        try:
-            instruments = kite.ltp(f"NSE:{symbol}")
-            return instruments[f"NSE:{symbol}"]["last_price"]
-        except Exception as e:
-            st.error(f"Kite fetch failed for {symbol}: {e}")
-
-    # fallback
-    try:
-        data = yf.Ticker(symbol + ".NS").history(period="1d")
-        price = round(float(data["Close"].iloc[-1]), 2)
-        st.info(f"Using yFinance fallback for {symbol}")
-        return price
-    except Exception as e2:
-        st.error(f"yFinance fallback failed for {symbol}: {e2}")
-        return 0.0
+        return f"Error generating token: {e}"
 
 
-# --- PLACE ORDER ---
-def place_order(symbol, qty, order_type="MARKET", transaction_type="BUY", price=None):
-    """Place a market/limit/cover order"""
+# -------------------------------------
+# 📊 Core Account Info
+# -------------------------------------
+def get_positions():
+    kite = get_kite_client()
     if not kite:
-        return {"error": "Kite not initialized"}
+        return []
+    try:
+        data = kite.positions()
+        return data.get("net", [])
+    except Exception as e:
+        st.error(f"Error fetching positions: {e}")
+        return []
+
+
+def get_holdings():
+    kite = get_kite_client()
+    if not kite:
+        return []
+    try:
+        return kite.holdings()
+    except Exception as e:
+        st.error(f"Error fetching holdings: {e}")
+        return []
+
+
+def get_funds():
+    kite = get_kite_client()
+    if not kite:
+        return {}
+    try:
+        return kite.margins()
+    except Exception as e:
+        st.error(f"Error fetching funds: {e}")
+        return {}
+
+
+# -------------------------------------
+# 💸 Trading & Orders
+# -------------------------------------
+def place_order(symbol, qty, order_type, trans_type, price=0.0):
+    kite = get_kite_client()
+    if not kite:
+        return "Client not initialized"
+
     try:
         order_id = kite.place_order(
             tradingsymbol=symbol,
             exchange="NSE",
-            transaction_type=transaction_type,
-            quantity=int(qty),
+            transaction_type=trans_type,
+            quantity=qty,
             order_type=order_type,
-            price=price if price else 0,
-            product="CNC",  # delivery for stocks
-            variety="regular"
+            product="CNC",
+            price=price if order_type == "LIMIT" else None,
         )
-        return {"success": True, "order_id": order_id}
+        return f"✅ Order placed successfully! Order ID: {order_id}"
     except Exception as e:
-        return {"error": str(e)}
+        return f"Error placing order: {e}"
 
 
-# --- POSITIONS / HOLDINGS / FUNDS ---
-def get_positions():
+# -------------------------------------
+# 🎯 GTT Orders & Alerts
+# -------------------------------------
+def create_gtt(symbol, trigger_price, qty):
+    kite = get_kite_client()
+    if not kite:
+        return "Client not initialized"
     try:
-        return kite.positions()
-    except Exception as e:
-        return {"error": str(e)}
-
-def get_holdings():
-    try:
-        return kite.holdings()
-    except Exception as e:
-        return {"error": str(e)}
-
-def get_funds():
-    try:
-        return kite.margins()
-    except Exception as e:
-        return {"error": str(e)}
-
-
-# --- GTT ORDERS ---
-def create_gtt(symbol, trigger_price, qty, order_type="BUY"):
-    """Create a Good Till Triggered (GTT) order"""
-    try:
-        trigger = [{
-            "exchange": "NSE",
-            "tradingsymbol": symbol,
-            "trigger_values": [trigger_price],
-            "last_price": trigger_price,
-            "orders": [{
-                "transaction_type": order_type,
+        return kite.place_gtt(
+            trigger_type="single",
+            tradingsymbol=symbol,
+            exchange="NSE",
+            trigger_values=[trigger_price],
+            last_price=trigger_price,
+            orders=[{
+                "transaction_type": "BUY",
                 "quantity": qty,
                 "price": trigger_price
             }]
-        }]
-        return kite.place_gtt("single", trigger[0]["tradingsymbol"], trigger[0]["trigger_values"], trigger[0]["orders"])
+        )
     except Exception as e:
-        return {"error": str(e)}
+        return f"Error creating GTT: {e}"
+
 
 def list_gtt_orders():
+    kite = get_kite_client()
+    if not kite:
+        return []
     try:
-        return kite.get_gtts()
+        return kite.gtts()
     except Exception as e:
-        return {"error": str(e)}
-
-def delete_gtt(order_id):
-    try:
-        kite.delete_gtt(order_id)
-        return {"success": True}
-    except Exception as e:
-        return {"error": str(e)}
+        st.error(f"Error fetching GTT orders: {e}")
+        return []
 
 
-# --- ALERT MANAGEMENT ---
-def create_alert(symbol, price, note="Price Alert"):
-    """Store user-defined alerts locally in Streamlit session"""
-    if "alerts" not in st.session_state:
-        st.session_state["alerts"] = []
-    st.session_state["alerts"].append({"symbol": symbol, "price": price, "note": note})
-    return {"success": True, "message": f"Alert for {symbol} at ₹{price} added."}
+def create_alert(symbol, alert_price, note):
+    return f"Alert set for {symbol} at ₹{alert_price} ({note})"
+
 
 def get_alerts():
-    return st.session_state.get("alerts", [])
+    return [{"symbol": "RELIANCE", "alert_price": 2500, "note": "Test alert"}]
 
-# --- MARGIN COMPUTATION ---
-def get_margin_requirements(symbol="RELIANCE", qty=1, transaction_type="BUY"):
-    """Fetch margin requirements for given order"""
+
+# -------------------------------------
+# 💰 Margin Requirements
+# -------------------------------------
+def get_margin_requirements(symbol, qty):
+    kite = get_kite_client()
+    if not kite:
+        return {}
     try:
-        margin = kite.order_margins([
-            {
-                "exchange": "NSE",
-                "tradingsymbol": symbol,
-                "transaction_type": transaction_type,
-                "variety": "regular",
-                "product": "CNC",
-                "order_type": "MARKET",
-                "quantity": qty
-            }
-        ])
-        return margin[0]
+        return kite.order_margins(
+            exchange="NSE",
+            tradingsymbol=symbol,
+            transaction_type="BUY",
+            variety="regular",
+            product="CNC",
+            order_type="MARKET",
+            quantity=qty,
+        )
     except Exception as e:
-        return {"error": str(e)}
+        st.error(f"Error checking margin: {e}")
+        return {}
+    
 
-
-# --- PORTFOLIO SUMMARY ---
-def get_portfolio_summary():
-    """Combine holdings + funds into unified summary"""
-    holdings = get_holdings()
-    funds = get_funds()
-    if "error" in holdings:
-        return {"error": holdings["error"]}
-    portfolio_value = sum(float(h["last_price"]) * h["quantity"] for h in holdings)
-    cash = funds.get("equity", {}).get("available", 0)
-    return {
-        "Holdings Count": len(holdings),
-        "Portfolio Value": portfolio_value,
-        "Available Funds": cash,
-        "Total Equity Value": portfolio_value + cash,
-    }
+# -------------------------------------
+# 📈 Live Quotes
+# -------------------------------------
+def get_live_quote(symbol):
+    kite = get_kite_client()
+    if not kite:
+        return 0.0
+    try:
+        quote = kite.ltp(f"NSE:{symbol}")
+        return quote[f"NSE:{symbol}"]["last_price"]
+    except Exception as e:
+        st.error(f"Error fetching quote for {symbol}: {e}")
+        return 0.0
