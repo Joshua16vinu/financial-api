@@ -7,7 +7,7 @@ from fmp_api import get_latest_price
 # 🔑 Initialize Gemini client
 # -----------------------------
 genai.configure(api_key=st.secrets.get("gemini_api_key"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 # --- Safe Session Initialization ---
 if "chat_history" not in st.session_state:
