@@ -6,3 +6,4 @@ requests
 beautifulsoup4
 plotly
 openai>=1.2.0
+google-generativeai
