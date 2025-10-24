@@ -170,14 +170,24 @@ elif menu == "Kite Tools":
         if not df_hold.empty:
             df_hold = df_hold[["tradingsymbol", "quantity", "average_price", "last_price", "pnl"]]
             df_hold.columns = ["Symbol", "Qty", "Avg Price", "Last Price", "PnL"]
+# ======================
+# Before showing positions table
+# ======================
 
             def color_pnl(val):
-                color = 'green' if val > 0 else 'red'
-                return f'color: {color}'
+                if val > 0:
+                    return "color: green;"
+                elif val < 0:
+                    return "color: red;"
+                else:
+                    return "color: black;"
 
-            st.dataframe(df_hold.style.applymap(color_pnl, subset=["PnL"]), use_container_width=True, hide_index=True)
-        else:
-            st.info("No holdings found.")
+            st.dataframe(
+                df_pos.style.applymap(color_pnl, subset=["PnL"]),
+                use_container_width=True,
+                hide_index=True
+            )
+
 
         # --- Positions ---
         st.markdown("### 📈 Positions")
