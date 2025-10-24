@@ -1,74 +1,129 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 from kite_api import get_holdings, get_positions
-from fmp_api import get_historical_data
+from fmp_api import get_latest_price  # ✅ FMP fallback added
+from fmp_api import get_historical_data  # optional for insights
 
+# --- Portfolio Display ---
+def show_portfolio_summary():
+    st.title("📈 Portfolio Analyzer")
 
-def calculate_value(items):
-    """Calculate total value from a list of holdings or positions using FMP live prices."""
-    total_value = 0
-    data = []
+    tabs = st.tabs(["Holdings", "Positions", "Summary"])
 
-    for item in items:
-        symbol = item.get("symbol") or item.get("tradingsymbol")
-        qty = item.get("quantity", 0)
-        if not symbol:
-            continue
+    # --- Tab 1: Holdings ---
+    with tabs[0]:
+        st.subheader("Holdings")
 
         try:
-            price_df = get_historical_data(symbol)
-            last_price = price_df["close"].iloc[-1] if not price_df.empty else 0.0
+            holdings = get_holdings() or []
         except Exception as e:
-            st.warning(f"Error fetching price for {symbol}: {e}")
-            last_price = 0.0
+            st.error(f"Error fetching holdings: {e}")
+            holdings = []
 
-        value = qty * last_price
-        total_value += value
+        if not isinstance(holdings, list):
+            holdings = [holdings]
 
-        data.append({
-            "Symbol": symbol,
-            "Quantity": qty,
-            "Last Price (₹)": round(last_price, 2),
-            "Value (₹)": round(value, 2),
-        })
-
-    return total_value, pd.DataFrame(data)
-
-
-def show_portfolio_summary():
-    """Display holdings, positions, and combined portfolio summary."""
-    st.subheader("💹 Portfolio Analyzer")
-
-    try:
-        holdings = get_holdings() or []
-        positions = get_positions() or []
-    except Exception as e:
-        st.error(f"Error fetching portfolio data: {e}")
-        return
-
-    holdings = holdings if isinstance(holdings, list) else [holdings]
-    positions = positions if isinstance(positions, list) else [positions]
-
-    total_hold_value, holdings_df = calculate_value(holdings)
-    total_pos_value, positions_df = calculate_value(positions)
-    total_portfolio_value = total_hold_value + total_pos_value
-
-    tab1, tab2, tab3 = st.tabs(["Holdings", "Positions", "Summary"])
-
-    with tab1:
-        st.metric("Total Holdings Value (₹)", f"{total_hold_value:,.2f}")
-        if not holdings_df.empty:
-            st.dataframe(holdings_df, use_container_width=True)
-        else:
+        if not holdings:
             st.info("No holdings found.")
-
-    with tab2:
-        st.metric("Total Positions Value (₹)", f"{total_pos_value:,.2f}")
-        if not positions_df.empty:
-            st.dataframe(positions_df, use_container_width=True)
         else:
-            st.info("No open positions.")
+            data = []
+            for h in holdings:
+                symbol = h.get("tradingsymbol") or h.get("symbol")
+                qty = h.get("quantity", 0)
+                last_price = h.get("last_price", 0) or 0
 
-    with tab3:
-        st.metric("Total Portfolio Value (₹)", f"{total_portfolio_value:,.2f}")
-        st.caption("💡 Includes both holdings and positions with live FMP prices.")
+                # ✅ fallback via FMP
+                if not last_price or last_price == 0:
+                    last_price = get_latest_price(symbol)
+
+                value = qty * last_price
+                data.append({
+                    "Symbol": symbol,
+                    "Quantity": qty,
+                    "Last Price (₹)": round(last_price, 2),
+                    "Value (₹)": round(value, 2),
+                })
+
+            df = pd.DataFrame(data)
+            total_value = df["Value (₹)"].sum()
+
+            st.metric("Total Holdings Value (₹)", f"{total_value:,.2f}")
+            st.dataframe(df, use_container_width=True)
+
+    # --- Tab 2: Positions ---
+    with tabs[1]:
+        st.subheader("Positions")
+
+        try:
+            positions = get_positions() or []
+        except Exception as e:
+            st.error(f"Error fetching positions: {e}")
+            positions = []
+
+        if not isinstance(positions, list):
+            positions = [positions]
+
+        if not positions:
+            st.info("No positions found.")
+        else:
+            data = []
+            for p in positions:
+                symbol = p.get("tradingsymbol") or p.get("symbol")
+                qty = p.get("quantity", 0)
+                last_price = p.get("last_price", 0) or 0
+
+                # ✅ fallback via FMP
+                if not last_price or last_price == 0:
+                    last_price = get_latest_price(symbol)
+
+                value = qty * last_price
+                data.append({
+                    "Symbol": symbol,
+                    "Quantity": qty,
+                    "Last Price (₹)": round(last_price, 2),
+                    "Value (₹)": round(value, 2),
+                })
+
+            df = pd.DataFrame(data)
+            total_value = df["Value (₹)"].sum()
+
+            st.metric("Total Positions Value (₹)", f"{total_value:,.2f}")
+            st.dataframe(df, use_container_width=True)
+
+    # --- Tab 3: Summary ---
+    with tabs[2]:
+        st.subheader("Portfolio Summary")
+
+        try:
+            holdings = get_holdings() or []
+            positions = get_positions() or []
+        except Exception as e:
+            st.error(f"Error fetching portfolio summary: {e}")
+            return
+
+        all_data = holdings + positions
+        if not all_data:
+            st.info("No portfolio data available.")
+            return
+
+        summary = []
+        for item in all_data:
+            symbol = item.get("tradingsymbol") or item.get("symbol")
+            qty = item.get("quantity", 0)
+            last_price = item.get("last_price", 0) or 0
+
+            if not last_price or last_price == 0:
+                last_price = get_latest_price(symbol)
+
+            summary.append({
+                "Symbol": symbol,
+                "Quantity": qty,
+                "Last Price (₹)": round(last_price, 2),
+                "Value (₹)": round(qty * last_price, 2),
+            })
+
+        df = pd.DataFrame(summary)
+        total_value = df["Value (₹)"].sum()
+
+        st.metric("Total Portfolio Value (₹)", f"{total_value:,.2f}")
+        st.dataframe(df, use_container_width=True)
