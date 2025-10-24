@@ -110,9 +110,8 @@ elif menu == "Portfolio":
     st.header("📊 Real-Time Portfolio Analyzer")
     st.info("This section displays your Zerodha holdings and positions with live prices from FMP.")
 
-    try:
-        from portfolio import show_portfolio  # if you renamed the main function differently, use that
-        show_portfolio()
+    try:  # if you renamed the main function differently, use that
+        show_portfolio_summary()
     except Exception as e:
         st.error(f"Error displaying portfolio: {e}")
 
