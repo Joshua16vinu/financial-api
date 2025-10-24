@@ -145,7 +145,12 @@ def get_alerts():
 # 💰 Margin Requirements
 # -------------------------------------
 def get_margin_requirements(symbol, qty):
+    """
+    Fetch order margin requirements for a stock using KiteConnect.
+    Compatible with latest kiteconnect API (v4+).
+    """
     try:
+        # ✅ Modern API call format (list of dicts)
         order_data = [{
             "exchange": "NSE",
             "tradingsymbol": symbol,
@@ -156,23 +161,10 @@ def get_margin_requirements(symbol, qty):
             "quantity": int(qty),
             "price": 0
         }]
-        # Try modern format first
-        return kite.order_margins(order_data)
-    except TypeError:
-        # fallback to old style for legacy users
-        try:
-            return kite.order_margins(
-                exchange="NSE",
-                tradingsymbol=symbol,
-                transaction_type="BUY",
-                variety="regular",
-                product="CNC",
-                order_type="MARKET",
-                quantity=int(qty),
-                price=0
-            )
-        except Exception as e:
-            return {"error": f"Error checking margin: {e}"}
+        margin = kite.order_margins(order_data)
+        return margin
+    except Exception as e:
+        return {"error": f"Error checking margin: {e}"}
 
 
 # -------------------------------------
