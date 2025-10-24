@@ -19,28 +19,25 @@ def get_historical_data(symbol="RELIANCE", period="6mo"):
 
 # --- Company Info ---
 def get_company_info(symbol="RELIANCE"):
-    """Fetch company fundamentals + key market stats (works for Indian stocks)."""
     query_symbol = symbol if "." in symbol else f"{symbol}.NS"
-
-    profile_url = f"{BASE_URL}/profile/{query_symbol}?apikey={FMP_API_KEY}"
-    quote_url = f"{BASE_URL}/quote/{query_symbol}?apikey={FMP_API_KEY}"
 
     profile_data, quote_data = {}, {}
 
     try:
-        profile_res = requests.get(profile_url).json()
-        if isinstance(profile_res, list) and len(profile_res) > 0:
+        profile_res = requests.get(f"{BASE_URL}/profile/{query_symbol}?apikey={FMP_API_KEY}").json()
+        if profile_res:
             profile_data = profile_res[0]
-    except Exception as e:
-        st.warning(f"Profile fetch failed: {e}")
+    except:
+        profile_data = {}
 
     try:
-        quote_res = requests.get(quote_url).json()
-        if isinstance(quote_res, list) and len(quote_res) > 0:
+        quote_res = requests.get(f"{BASE_URL}/quote/{query_symbol}?apikey={FMP_API_KEY}").json()
+        if quote_res:
             quote_data = quote_res[0]
-    except Exception as e:
-        st.warning(f"Quote fetch failed: {e}")
+    except:
+        quote_data = {}
 
+    # Use fallback values if null
     return {
         "Name": profile_data.get("companyName") or query_symbol,
         "Sector": profile_data.get("sector"),
@@ -49,14 +46,12 @@ def get_company_info(symbol="RELIANCE"):
         "P/E Ratio": quote_data.get("pe"),
         "52 Week High": quote_data.get("yearHigh"),
         "52 Week Low": quote_data.get("yearLow"),
-        "Beta": quote_data.get("beta"),
+        "Beta": quote_data.get("beta") or "N/A",  # fallback
         "Volume": quote_data.get("volume"),
-        "Exchange": quote_data.get("exchangeShortName"),
+        "Exchange": quote_data.get("exchangeShortName") or "NSE",  # fallback
         "Description": profile_data.get("description"),
         "Website": profile_data.get("website"),
     }
-
-
 
 # --- Latest Price Fallback ---
 @st.cache_data(ttl=3600)
