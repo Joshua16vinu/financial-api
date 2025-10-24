@@ -23,7 +23,7 @@ st.sidebar.header("🔑 Kite Connect Auth")
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
-st.sidebar.markdown("1️⃣ Click login and paste request token:")
+st.sidebar.markdown("Click login and paste request token:")
 if st.sidebar.button("Open Kite Login URL"):
     st.write(f"[Click here to login]({get_login_url()})")
 
@@ -47,7 +47,7 @@ menu = st.sidebar.radio("Select Section", [
 # STOCK DATA
 # -----------------------------
 if menu == "Stock Data":
-    st.header("📈 Stock Overview")
+    st.header("Stock Overview")
     symbol = st.text_input("Enter NSE Symbol (e.g., RELIANCE)", "RELIANCE")
     if st.button("Fetch Data"):
         live = get_live_quote(symbol)
@@ -90,17 +90,17 @@ elif menu == "Mutual Funds":
             st.error(mf["error"])
         else:
             st.markdown(f"""
-            ### 🏦 {mf['fund_name']}
+            ### {mf['fund_name']}
             **Fund House:** {mf['fund_house']}  
             **Category:** {mf['category']}  
-            ⭐ **Rating:** {mf['rating']}  
-            📈 **Risk:** {mf['risk']}  
-            💰 **Expense Ratio:** {mf['expense_ratio']}  
-            🏦 **AUM:** {mf['aum']}  
-            💵 **Dividend Info:** {mf['dividend_info']}  
+            **Rating:** {mf['rating']}  
+            **Risk:** {mf['risk']}  
+            **Expense Ratio:** {mf['expense_ratio']}  
+            **AUM:** {mf['aum']}  
+            **Dividend Info:** {mf['dividend_info']}  
             """)
             if not mf["nav_df"].empty:
-                st.subheader("📊 NAV Trend (Last 30 Days)")
+                st.subheader("NAV Trend (Last 30 Days)")
                 st.line_chart(mf["nav_df"].set_index("date")["nav"])
 
 # -----------------------------
@@ -113,7 +113,7 @@ elif menu == "Portfolio":
 # AI INSIGHTS
 # -----------------------------
 elif menu == "AI Insights":
-    st.header("🧠 AI Portfolio Insights")
+    st.header("AI Portfolio Insights")
     if st.button("Get Insights"):
         insights = ai_portfolio_insights()
         st.write(insights)
@@ -122,15 +122,15 @@ elif menu == "AI Insights":
 # CHAT
 # -----------------------------
 elif menu == "Chat":
-    st.header("💬 Chat with Your Financial Agent")
+    st.header("Chat with Your Financial Agent")
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
     user_query = st.text_input("Ask me anything about your portfolio:")
     if st.button("Send") and user_query.strip():
         response = ai_chat(user_query)
-        st.markdown(f"**🧑‍💼 You:** {user_query}")
-        st.markdown(f"**🤖 Assistant:** {response}")
+        st.markdown(f"**You:** {user_query}")
+        st.markdown(f"**Assistant:** {response}")
 
 # -----------------------------
 # KITE TOOLS
@@ -143,7 +143,7 @@ elif menu == "Kite Tools":
 
     # --- Place Order
     with tab1:
-        st.subheader("📤 Place Order")
+        st.subheader("Place Order")
         symbol = st.text_input("Symbol (e.g., RELIANCE)")
         qty = st.number_input("Quantity", 1, 1000, 1)
         order_type = st.selectbox("Order Type", ["MARKET", "LIMIT"])
@@ -155,14 +155,14 @@ elif menu == "Kite Tools":
 
     # --- Positions & Holdings
     with tab2:
-        st.subheader("📊 Positions & Holdings")
+        st.subheader("Positions & Holdings")
         st.write(get_positions())
         st.write(get_holdings())
         st.write(get_funds())
 
     # --- GTT Orders
     with tab3:
-        st.subheader("📆 Manage GTT Orders")
+        st.subheader("Manage GTT Orders")
         sym = st.text_input("Symbol for GTT")
         trg_price = st.number_input("Trigger Price", 0.0)
         qty = st.number_input("Quantity", 1)
@@ -174,7 +174,7 @@ elif menu == "Kite Tools":
 
     # --- Alerts
     with tab4:
-        st.subheader("⏰ Price Alerts")
+        st.subheader("Price Alerts")
         sym = st.text_input("Alert Symbol")
         alert_price = st.number_input("Alert Price", 0.0)
         note = st.text_input("Note", "Price Alert")
@@ -184,7 +184,7 @@ elif menu == "Kite Tools":
 
     # --- Margins
     with tab5:
-        st.subheader("💰 Margin Requirement Check")
+        st.subheader("Margin Requirement Check")
         sym = st.text_input("Symbol for Margin Check", "RELIANCE")
         qty = st.number_input("Quantity for Margin", 1)
         res = get_margin_requirements(sym, qty)
