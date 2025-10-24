@@ -69,15 +69,50 @@ def ai_portfolio_insights():
     add_to_context(str(portfolio_data))
 
     prompt = f"""
-Analyze the following portfolio and provide:
-1. Top performers
-2. Underperformers
-3. Rebalancing suggestions
-4. Risk assessment
-5. Actionable summary
+You are a financial analyst AI assisting an investor in reviewing their equity portfolio.
 
-Portfolio: {portfolio_data}
+Your task is to perform a deep portfolio analysis based on the data provided below.
+
+Portfolio Data:
+{portfolio_data}
+
+Analyze and provide a structured report covering the following points:
+
+1. **Portfolio Overview**
+   - Summarize total holdings, invested capital, and current valuation.
+   - Highlight overall profit/loss and portfolio trend (bullish/bearish/neutral).
+
+2. **Top Performers**
+   - Identify the top 3–5 performing stocks.
+   - Mention their percentage gain, reasons (if inferable), and whether to continue holding or book partial profits.
+
+3. **Underperformers**
+   - List the lowest 3–5 performing holdings.
+   - Provide reasons for underperformance (e.g., sector slump, high volatility, weak fundamentals) if possible.
+   - Recommend actions: hold, average down, or exit.
+
+4. **Risk and Diversification Assessment**
+   - Evaluate portfolio concentration (e.g., too many small/mid-caps, single sector exposure, etc.).
+   - Mention liquidity risk or volatility risk if identifiable.
+   - Suggest diversification or hedging ideas (like ETFs, blue-chips, or sector rotation).
+
+5. **Rebalancing Recommendations**
+   - Suggest what to buy, sell, or rebalance.
+   - Indicate target allocation changes (e.g., “Reduce exposure to small-caps from 40% → 25%”).
+   - Include short-term vs long-term perspective.
+
+6. **Actionable Summary**
+   - Bullet-point key takeaways for the user.
+   - Keep the summary concise, focusing on what actions to take this week or month.
+
+7. **Tone and Output Format**
+   - Use a clear, investor-friendly tone.
+   - Structure the output with headings, bullet points, and short paragraphs.
+   - Provide insights as if writing a mini portfolio report (not just a list).
+
+Return only the analysis in markdown format.
 """
+
 
     try:
         response = model.generate_content(prompt)
