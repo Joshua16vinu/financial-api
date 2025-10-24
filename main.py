@@ -14,12 +14,12 @@ from portfolio import show_portfolio_summary
 from ai_agent import ai_portfolio_insights, ai_chat
 
 st.set_page_config(page_title="Smart Financial Assistant", layout="wide")
-st.title("💰 Financial Assistant Dashboard")
+st.title("Financial Assistant Dashboard")
 
 # -----------------------------
 # Kite Connect Authentication
 # -----------------------------
-st.sidebar.header("🔑 Kite Connect Auth")
+st.sidebar.header("Kite Connect Auth")
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
