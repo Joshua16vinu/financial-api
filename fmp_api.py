@@ -19,26 +19,43 @@ def get_historical_data(symbol="RELIANCE", period="6mo"):
 
 # --- Company Info ---
 def get_company_info(symbol="RELIANCE"):
-    url = f"{BASE_URL}/profile/{symbol}?apikey={FMP_API_KEY}"
-    res = requests.get(url).json()
-    if res:
-        info = res[0]
-        return {
-            "Name": info.get("companyName"),
-            "Sector": info.get("sector"),
-            "Industry": info.get("industry"),
-            "Market Cap": info.get("mktCap"),
-            "P/E Ratio": info.get("priceEarningsRatio"),
-            "52 Week High": info.get("range52WeekHigh"),
-            "52 Week Low": info.get("range52WeekLow"),
-            "Beta": info.get("beta"),
-            "Website": info.get("website"),
-            "Employees": info.get("fullTimeEmployees"),
-            "Description": info.get("description"),
-            "Exchange": info.get("exchangeShortName"),
-            "Logo": info.get("image")
-        }
-    return {}
+    """Fetch company fundamentals + key market stats (works for Indian stocks)."""
+    query_symbol = symbol if "." in symbol else f"{symbol}.NS"
+
+    profile_url = f"{BASE_URL}/profile/{query_symbol}?apikey={FMP_API_KEY}"
+    quote_url = f"{BASE_URL}/quote/{query_symbol}?apikey={FMP_API_KEY}"
+
+    profile_data, quote_data = {}, {}
+
+    try:
+        profile_res = requests.get(profile_url).json()
+        if isinstance(profile_res, list) and len(profile_res) > 0:
+            profile_data = profile_res[0]
+    except Exception as e:
+        st.warning(f"Profile fetch failed: {e}")
+
+    try:
+        quote_res = requests.get(quote_url).json()
+        if isinstance(quote_res, list) and len(quote_res) > 0:
+            quote_data = quote_res[0]
+    except Exception as e:
+        st.warning(f"Quote fetch failed: {e}")
+
+    return {
+        "Name": profile_data.get("companyName") or query_symbol,
+        "Sector": profile_data.get("sector"),
+        "Industry": profile_data.get("industry"),
+        "Market Cap": quote_data.get("marketCap"),
+        "P/E Ratio": quote_data.get("pe"),
+        "52 Week High": quote_data.get("yearHigh"),
+        "52 Week Low": quote_data.get("yearLow"),
+        "Beta": quote_data.get("beta"),
+        "Volume": quote_data.get("volume"),
+        "Exchange": quote_data.get("exchangeShortName"),
+        "Description": profile_data.get("description"),
+        "Website": profile_data.get("website"),
+    }
+
 
 
 # --- Latest Price Fallback ---
