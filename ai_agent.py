@@ -1,10 +1,13 @@
 import streamlit as st
-from openai import OpenAI
+import google.generativeai as genai
 from kite_api import get_holdings, get_positions
 from fmp_api import get_latest_price
 
-# Initialize OpenAI client
-client = OpenAI(api_key=st.secrets.get("openai_api_key"))
+# -----------------------------
+# 🔑 Initialize Gemini client
+# -----------------------------
+genai.configure(api_key=st.secrets.get("gemini_api_key"))
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 # --- Safe Session Initialization ---
 if "chat_history" not in st.session_state:
@@ -58,10 +61,10 @@ def get_portfolio_snapshot():
 
 
 # -----------------------------
-# 🧠 Portfolio Insights via AI
+# 🧠 Portfolio Insights via AI (Gemini)
 # -----------------------------
 def ai_portfolio_insights():
-    """Generate AI-based portfolio insights using OpenAI."""
+    """Generate AI-based portfolio insights using Gemini."""
     portfolio_data = get_portfolio_snapshot()
     add_to_context(str(portfolio_data))
 
@@ -77,12 +80,8 @@ Portfolio: {portfolio_data}
 """
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-        )
-        insights = response.choices[0].message.content
+        response = model.generate_content(prompt)
+        insights = response.text
     except Exception as e:
         insights = f"Error fetching insights: {e}"
 
@@ -91,7 +90,7 @@ Portfolio: {portfolio_data}
 
 
 # -----------------------------
-# 💬 AI Chat Interface
+# 💬 AI Chat Interface (Gemini)
 # -----------------------------
 def ai_chat(user_query: str):
     """Chat interface for financial assistant."""
@@ -103,17 +102,15 @@ You are a helpful financial assistant. Use the following context when responding
 {context_memory}
 """
 
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(chat_history[-5:])  # include last few messages
-    messages.append({"role": "user", "content": user_query})
+    # Combine system prompt + last few messages
+    history_text = "\n".join(
+        [f"{msg['role'].capitalize()}: {msg['content']}" for msg in chat_history[-5:]]
+    )
+    full_prompt = f"{system_prompt}\n\n{history_text}\n\nUser: {user_query}\nAssistant:"
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.5,
-        )
-        answer = response.choices[0].message.content
+        response = model.generate_content(full_prompt)
+        answer = response.text
     except Exception as e:
         answer = f"Error: {e}"
 
