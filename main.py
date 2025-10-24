@@ -47,61 +47,30 @@ menu = st.sidebar.radio("Select Section", [
 # -----------------------------
 # STOCK DATA
 # -----------------------------
-
 if menu == "Stock Data":
     st.header("Stock Overview")
-
-    symbol_input = st.text_input(
-        "Enter NSE or US Symbol (e.g., RELIANCE, AAPL)", "RELIANCE"
-    )
-
-    # ----------------- Helper -----------------
-    def normalize_symbol(symbol: str):
-        symbol = symbol.upper().strip()
-        if symbol.endswith(".NS"):
-            return symbol  # Indian NSE
-        elif symbol.isalpha() and len(symbol) <= 5:
-            return symbol  # US stock
-        else:
-            return symbol  # fallback, may fail if invalid
-
-    symbol = normalize_symbol(symbol_input)
+    symbol = st.text_input("Enter NSE Symbol (e.g., RELIANCE)", "RELIANCE")
 
     if st.button("Fetch Data"):
+        symbol_ns = symbol.upper().strip() + ".NS"
 
-        # ---- Live Price ----
-        live = get_latest_price(symbol)
-        currency = "₹" if symbol.endswith(".NS") else "$"
-        st.metric(label=f"Live Price of {symbol_input}", value=f"{currency}{live}")
+        # Live Price
+        live = get_latest_price(symbol_ns)
+        st.metric(label=f"Live Price of {symbol}", value=f"₹{live}")
 
-        # ---- Company Info ----
-        info = get_company_info(symbol)
-
-        # Replace None/NULL with "N/A" for display
-        info_display = {k: (v if v not in [None, ""] else "N/A") for k, v in info.items()}
-
+        # Company Info
+        info = get_company_info(symbol_ns)
         st.subheader("Company Information")
-        st.json(info_display)
+        st.write(info)
 
-        # ---- Historical Data ----
-        data = get_historical_data(symbol, period="6mo")
-
+        # Historical Data
+        data = get_historical_data(symbol_ns, period="6mo")
         if data.empty:
             st.warning("No historical data found for this symbol.")
         else:
             st.subheader("Price Trend")
-            fig = px.line(
-                data,
-                x=data.index,
-                y="close",
-                title=f"{symbol_input} - Last 6 Months",
-                labels={"close": f"Price ({currency})"}
-            )
+            fig = px.line(data, x=data.index, y="close", title=f"{symbol} - Last 6 Months")
             st.plotly_chart(fig, use_container_width=True)
-
-        # ---- Optional Extra Info ----
-        if info_display.get("Beta") == "N/A" and symbol.endswith(".NS"):
-            st.info("Beta is not available for Indian NSE stocks via FMP.")
 
 
 
