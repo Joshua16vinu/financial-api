@@ -107,12 +107,15 @@ elif menu == "Mutual Funds":
 
 # --- PORTFOLIO ---
 elif menu == "Portfolio":
-    st.header("📊 Portfolio Summary (Stocks + MFs)")
-    st.info("Simulated unified view combining stock and mutual fund data.")
-    df_list, total_value = get_portfolio_value(portfolio)
-    df = pd.DataFrame(df_list)
-    st.dataframe(df)
-    st.success(f"💵 Total Portfolio Value: ₹{total_value:,.2f}")
+    st.header("📊 Real-Time Portfolio Analyzer")
+    st.info("This section displays your Zerodha holdings and positions with live prices from FMP.")
+
+    try:
+        from portfolio import show_portfolio  # if you renamed the main function differently, use that
+        show_portfolio()
+    except Exception as e:
+        st.error(f"Error displaying portfolio: {e}")
+
 
 # --- AI INSIGHTS ---
 elif menu == "AI Insights":
