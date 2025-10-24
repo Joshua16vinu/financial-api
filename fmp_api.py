@@ -19,7 +19,6 @@ def get_historical_data(symbol="RELIANCE", period="6mo"):
 
 # --- Company Info ---
 def get_company_info(symbol="RELIANCE"):
-    """Fetch basic company info from FMP."""
     url = f"{BASE_URL}/profile/{symbol}?apikey={FMP_API_KEY}"
     res = requests.get(url).json()
     if res:
@@ -27,12 +26,20 @@ def get_company_info(symbol="RELIANCE"):
         return {
             "Name": info.get("companyName"),
             "Sector": info.get("sector"),
+            "Industry": info.get("industry"),
             "Market Cap": info.get("mktCap"),
             "P/E Ratio": info.get("priceEarningsRatio"),
             "52 Week High": info.get("range52WeekHigh"),
             "52 Week Low": info.get("range52WeekLow"),
+            "Beta": info.get("beta"),
+            "Website": info.get("website"),
+            "Employees": info.get("fullTimeEmployees"),
+            "Description": info.get("description"),
+            "Exchange": info.get("exchangeShortName"),
+            "Logo": info.get("image")
         }
     return {}
+
 
 # --- Latest Price Fallback ---
 @st.cache_data(ttl=3600)
