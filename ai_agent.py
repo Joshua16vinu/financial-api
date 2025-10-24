@@ -80,11 +80,11 @@ Analyze and provide a structured report covering the following points:
 
 1. **Portfolio Overview**
    - Summarize total holdings, invested capital, and current valuation.
-   - Highlight overall profit/loss and portfolio trend (bullish/bearish/neutral).
+   - Highlight portfolio trend (bullish/bearish/neutral).
 
 2. **Top Performers**
    - Identify the top 3–5 performing stocks.
-   - Mention their percentage gain, reasons (if inferable), and whether to continue holding or book partial profits.
+   - Mention whether to continue holding or book partial profits with their reasons (if inferable).
 
 3. **Underperformers**
    - List the lowest 3–5 performing holdings.
@@ -104,6 +104,7 @@ Analyze and provide a structured report covering the following points:
 6. **Actionable Summary**
    - Bullet-point key takeaways for the user.
    - Keep the summary concise, focusing on what actions to take this week or month.
+   - Keep it within 2 sentences
 
 7. **Tone and Output Format**
    - Use a clear, investor-friendly tone.
