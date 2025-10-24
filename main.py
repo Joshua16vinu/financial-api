@@ -5,8 +5,8 @@ from kite_api import get_live_quote, get_login_url, generate_access_token,get_po
 # from yfinance_api import get_historical_data, get_company_info
 from fmp_api import get_historical_data, get_company_info
 from mf_api import get_mutual_fund_data
-#from portfolio import portfolio, get_portfolio_value
 from ai_agent import ai_portfolio_insights, ai_chat
+from portfolio import show_portfolio_summary
 
 st.set_page_config(page_title="Smart Financial Assistant", layout="wide")
 st.title("Financial Assistant Dashboard")
