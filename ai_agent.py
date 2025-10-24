@@ -1,53 +1,51 @@
 import streamlit as st
 from openai import OpenAI
 from kite_api import get_holdings, get_positions
-from fmp_api import get_historical_data
+from fmp_api import get_latest_price
 
 # Initialize OpenAI client
 client = OpenAI(api_key=st.secrets.get("openai_api_key"))
 
-# -----------------------------
-# Session State for Chat & Memory
-# -----------------------------
+# --- Safe Session Initialization ---
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+    st.session_state["chat_history"] = []
 
 if "context_memory" not in st.session_state:
-    st.session_state.context_memory = ""
+    st.session_state["context_memory"] = ""
 
 
-def add_to_context(new_context):
-    """Merge new financial data into long-term context."""
-    st.session_state.context_memory += f"\n{new_context}\n"
+# -----------------------------
+# 🧩 Helper: Context Management
+# -----------------------------
+def add_to_context(new_context: str):
+    """Safely append context data to Streamlit session."""
+    current_context = st.session_state.get("context_memory", "")
+    st.session_state["context_memory"] = current_context + f"\n{new_context}\n"
 
 
+# -----------------------------
+# 📊 Portfolio Snapshot
+# -----------------------------
 def get_portfolio_snapshot():
-    """Fetch current holdings & positions safely with live FMP prices."""
-    try:
-        holdings = get_holdings() or []
-        positions = get_positions() or []
-    except Exception as e:
-        st.error(f"Error fetching portfolio data: {e}")
-        return []
+    """Fetch current holdings & positions with FMP fallback."""
+    snapshot = []
+    holdings = get_holdings() or []
+    positions = get_positions() or []
 
-    # Normalize structures
     if not isinstance(holdings, list):
         holdings = [holdings]
     if not isinstance(positions, list):
         positions = [positions]
 
-    snapshot = []
-    for item in holdings + positions:
+    all_data = holdings + positions
+    for item in all_data:
         symbol = item.get("symbol") or item.get("tradingsymbol")
         qty = item.get("quantity", 0)
-        if not symbol:
-            continue
-        try:
-            price_df = get_historical_data(symbol)
-            last_price = price_df["close"].iloc[-1] if not price_df.empty else 0.0
-        except Exception as e:
-            st.warning(f"Error fetching price for {symbol}: {e}")
-            last_price = 0.0
+        last_price = item.get("last_price", 0) or 0
+
+        # ✅ fallback to FMP if Kite price missing
+        if not last_price or last_price == 0:
+            last_price = get_latest_price(symbol)
 
         snapshot.append({
             "symbol": symbol,
@@ -59,12 +57,12 @@ def get_portfolio_snapshot():
     return snapshot
 
 
+# -----------------------------
+# 🧠 Portfolio Insights via AI
+# -----------------------------
 def ai_portfolio_insights():
-    """Generate AI insights for current portfolio."""
+    """Generate AI-based portfolio insights using OpenAI."""
     portfolio_data = get_portfolio_snapshot()
-    if not portfolio_data:
-        return "⚠️ No portfolio data found. Please ensure Kite is connected."
-
     add_to_context(str(portfolio_data))
 
     prompt = f"""
@@ -85,26 +83,28 @@ Portfolio: {portfolio_data}
             temperature=0.5,
         )
         insights = response.choices[0].message.content
-        add_to_context(f"Portfolio Insights: {insights}")
-        return insights
     except Exception as e:
-        st.error(f"AI error: {e}")
-        return "⚠️ Could not generate AI insights. Please check your API key or try again later."
+        insights = f"Error fetching insights: {e}"
+
+    add_to_context(f"Portfolio Insights: {insights}")
+    return insights
 
 
-def ai_chat(user_query):
-    """Conversational AI chat with contextual memory."""
-    combined_context = st.session_state.context_memory
+# -----------------------------
+# 💬 AI Chat Interface
+# -----------------------------
+def ai_chat(user_query: str):
+    """Chat interface for financial assistant."""
+    context_memory = st.session_state.get("context_memory", "")
+    chat_history = st.session_state.get("chat_history", [])
+
     system_prompt = f"""
-You are a personalized financial assistant.
-Use this context to answer questions about portfolio holdings, positions, and strategies.
-
-Context:
-{combined_context}
+You are a helpful financial assistant. Use the following context when responding:
+{context_memory}
 """
+
     messages = [{"role": "system", "content": system_prompt}]
-    for msg in st.session_state.chat_history[-5:]:
-        messages.append(msg)
+    messages.extend(chat_history[-5:])  # include last few messages
     messages.append({"role": "user", "content": user_query})
 
     try:
@@ -114,9 +114,12 @@ Context:
             temperature=0.5,
         )
         answer = response.choices[0].message.content
-        st.session_state.chat_history.append({"role": "user", "content": user_query})
-        st.session_state.chat_history.append({"role": "assistant", "content": answer})
-        return answer
     except Exception as e:
-        st.error(f"Chat error: {e}")
-        return "⚠️ Unable to fetch AI response at this time."
+        answer = f"Error: {e}"
+
+    # update session state safely
+    chat_history.append({"role": "user", "content": user_query})
+    chat_history.append({"role": "assistant", "content": answer})
+    st.session_state["chat_history"] = chat_history
+
+    return answer
