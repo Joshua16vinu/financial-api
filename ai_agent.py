@@ -1,11 +1,14 @@
 import streamlit as st
 from openai import OpenAI
-from portfolio import get_portfolio_value
+from kite_api import get_holdings, get_positions
+from fmp_api import get_historical_data
 
 # Initialize OpenAI client
-client = OpenAI(api_key=st.secrets["openai_api_key"])
+client = OpenAI(api_key=st.secrets.get("openai_api_key"))
 
-# --- Session state for persistent context ---
+# -----------------------------
+# Session State for Chat & Memory
+# -----------------------------
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
@@ -14,27 +17,45 @@ if "context_memory" not in st.session_state:
 
 
 def add_to_context(new_context):
-    """Merge new financial data (portfolio summary) into long-term context."""
+    """Merge new financial data into long-term context."""
     st.session_state.context_memory += f"\n{new_context}\n"
 
 
+def get_portfolio_snapshot():
+    """Fetch current holdings & positions with live FMP prices."""
+    snapshot = []
+    for item in get_holdings() + get_positions():
+        symbol = item.get("symbol") or item.get("tradingsymbol")
+        qty = item.get("quantity", 0)
+        try:
+            price_df = get_historical_data(symbol)
+            last_price = price_df["close"].iloc[-1] if not price_df.empty else 0.0
+        except:
+            last_price = 0.0
+        snapshot.append({
+            "symbol": symbol,
+            "quantity": qty,
+            "last_price": round(last_price, 2),
+            "value": round(qty * last_price, 2),
+        })
+    return snapshot
+
+
 def ai_portfolio_insights():
-    """Automatically fetch live portfolio, generate insights, and store in context."""
-    portfolio_snapshot, total_value = get_portfolio_value()
+    """Generate AI insights for current portfolio."""
+    portfolio_data = get_portfolio_snapshot()
+    add_to_context(str(portfolio_data))
+
     prompt = f"""
-My portfolio contains the following holdings:
+Analyze the following portfolio and provide:
 
-{portfolio_snapshot}
+1. Top performers
+2. Underperformers
+3. Rebalancing suggestions
+4. Risk assessment
+5. Actionable summary
 
-Total portfolio value: ₹{total_value:,.2f}
-
-Please provide:
-
-1. Top Performers (Gainers) - show symbol, % gain, reason.
-2. Underperformers (Losers) - show symbol, % loss, reason.
-3. Rebalancing Suggestions - which stocks to buy more, sell, or hold.
-4. Risk Assessment - low/moderate/high, and why.
-5. Actionable Summary - concise points suitable for dashboard cards.
+Portfolio: {portfolio_data}
 """
 
     response = client.chat.completions.create(
@@ -44,26 +65,22 @@ Please provide:
     )
 
     insights = response.choices[0].message.content
-    add_to_context(f"Portfolio Summary and Insights: {insights}")
+    add_to_context(f"Portfolio Insights: {insights}")
     return insights
 
 
 def ai_chat(user_query):
     """
-    Chat interface for the financial assistant.
-    Automatically includes current portfolio context.
+    Chat interface for financial assistant.
+    Uses portfolio context stored in session state.
     """
-    # Include portfolio snapshot in extra context
-    portfolio_snapshot, _ = get_portfolio_value()
-    combined_context = st.session_state.context_memory + f"\nPortfolio Snapshot: {portfolio_snapshot}"
-
+    combined_context = st.session_state.context_memory
     system_prompt = f"""
-You are a personalised financial assistant. Use the following context to answer the question:
+You are a personalized financial assistant. Use this context to answer questions:
+
 {combined_context}
 """
-
     messages = [{"role": "system", "content": system_prompt}]
-    # include last 5 chat messages
     for msg in st.session_state.chat_history[-5:]:
         messages.append(msg)
     messages.append({"role": "user", "content": user_query})
