@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from kite_api import get_live_quote, get_login_url, generate_access_token
+from kite_api import get_live_quote, get_login_url, generate_access_token,get_positions, get_holdings, get_funds, place_order, create_gtt, list_gtt_orders, create_alert, get_alerts, get_margin_requirements
 # from yfinance_api import get_historical_data, get_company_info
 from fmp_api import get_historical_data, get_company_info
 from mf_api import get_mutual_fund_data
