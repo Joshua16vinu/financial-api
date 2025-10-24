@@ -138,8 +138,8 @@ elif menu == "Chat":
 elif menu == "Kite Tools":
     st.header("🪁 Zerodha Kite Tools")
     st.info("Manage orders, positions, GTTs, margins, and alerts directly here.")
-
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Place Order", "Positions & Holdings", "GTT Orders", "Alerts", "Margins"])
+    # Tabs: Place Order, Positions, GTT, Alerts, Margins
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Place Order", "Positions", "GTT Orders", "Alerts", "Margins"])
 
     # --- Place Order
     with tab1:
@@ -153,63 +153,12 @@ elif menu == "Kite Tools":
             res = place_order(symbol, qty, order_type, trans_type, price)
             st.write(res)
 
-    # --- Positions & Holdings (Improved Display)
+    # --- Positions & Holdings
     with tab2:
-        st.subheader("📊 Positions & Holdings")
-
-        holdings = get_holdings()
-        positions = get_positions()
-        funds = get_funds()
-
-        def safe_df(data):
-            return pd.DataFrame(data) if isinstance(data, list) and len(data) > 0 else pd.DataFrame()
-
-        # --- Holdings ---
-        st.markdown("### 💼 Holdings")
-        df_hold = safe_df(holdings)
-        if not df_hold.empty:
-            df_hold = df_hold[["tradingsymbol", "quantity", "average_price", "last_price", "pnl"]]
-            df_hold.columns = ["Symbol", "Qty", "Avg Price", "Last Price", "PnL"]
-# ======================
-# Before showing positions table
-# ======================
-
-            def color_pnl(val):
-                if val > 0:
-                    return "color: green;"
-                elif val < 0:
-                    return "color: red;"
-                else:
-                    return "color: black;"
-
-            st.dataframe(
-                df_pos.style.applymap(color_pnl, subset=["PnL"]),
-                use_container_width=True,
-                hide_index=True
-            )
-
-
-        # --- Positions ---
-        st.markdown("### 📈 Positions")
-        df_pos = safe_df(positions)
-        if not df_pos.empty:
-            df_pos = df_pos[["tradingsymbol", "quantity", "buy_price", "sell_price", "pnl"]]
-            df_pos.columns = ["Symbol", "Qty", "Buy Price", "Sell Price", "PnL"]
-            st.dataframe(df_pos.style.applymap(color_pnl, subset=["PnL"]), use_container_width=True, hide_index=True)
-        else:
-            st.info("No open positions found.")
-
-        # --- Funds Summary ---
-        st.markdown("### 💰 Funds Summary")
-        if "equity" in funds:
-            eq = funds["equity"]
-            st.metric("Net Balance", eq["net"])
-            with st.expander("Available Funds"):
-                st.json(eq["available"])
-            with st.expander("Utilised Funds"):
-                st.json(eq["utilised"])
-        else:
-            st.info("No funds data available.")
+        st.subheader("Positions & Holdings")
+        st.write(get_positions())
+        st.write(get_holdings())
+        st.write(get_funds())
 
     # --- GTT Orders
     with tab3:
