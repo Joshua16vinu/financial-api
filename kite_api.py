@@ -145,23 +145,35 @@ def get_alerts():
 # 💰 Margin Requirements
 # -------------------------------------
 def get_margin_requirements(symbol, qty):
-    kite = get_kite_client()
-    if not kite:
-        return {}
     try:
-        return kite.order_margins(
-            exchange="NSE",
-            tradingsymbol=symbol,
-            transaction_type="BUY",
-            variety="regular",
-            product="CNC",
-            order_type="MARKET",
-            quantity=qty,
-        )
-    except Exception as e:
-        st.error(f"Error checking margin: {e}")
-        return {}
-    
+        order_data = [{
+            "exchange": "NSE",
+            "tradingsymbol": symbol,
+            "transaction_type": "BUY",
+            "variety": "regular",
+            "product": "CNC",
+            "order_type": "MARKET",
+            "quantity": int(qty),
+            "price": 0
+        }]
+        # Try modern format first
+        return kite.order_margins(order_data)
+    except TypeError:
+        # fallback to old style for legacy users
+        try:
+            return kite.order_margins(
+                exchange="NSE",
+                tradingsymbol=symbol,
+                transaction_type="BUY",
+                variety="regular",
+                product="CNC",
+                order_type="MARKET",
+                quantity=int(qty),
+                price=0
+            )
+        except Exception as e:
+            return {"error": f"Error checking margin: {e}"}
+
 
 # -------------------------------------
 # 📈 Live Quotes
