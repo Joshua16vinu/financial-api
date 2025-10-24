@@ -9,6 +9,7 @@ from kite_api import (
     create_alert, get_alerts, get_margin_requirements
 )
 from fmp_api import get_historical_data, get_company_info
+from fmp_api import get_latest_price
 from mf_api import get_mutual_fund_data
 from portfolio import show_portfolio_summary
 from ai_agent import ai_portfolio_insights, ai_chat
@@ -50,7 +51,7 @@ if menu == "Stock Data":
     st.header("Stock Overview")
     symbol = st.text_input("Enter NSE Symbol (e.g., RELIANCE)", "RELIANCE")
     if st.button("Fetch Data"):
-        live = get_live_quote(symbol)
+        live = get_latest_price(symbol)
         st.metric(label=f"Live Price of {symbol}", value=f"₹{live}")
 
         info = get_company_info(symbol + ".NS")
@@ -61,6 +62,7 @@ if menu == "Stock Data":
         st.subheader("Price Trend")
         fig = px.line(data, x=data.index, y="close", title=f"{symbol} - Last 6 Months")
         st.plotly_chart(fig, use_container_width=True)
+
 
 # -----------------------------
 # MUTUAL FUNDS
