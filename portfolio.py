@@ -90,7 +90,7 @@ def show_portfolio_summary():
             st.metric("Total Positions Value (₹)", f"{total_value:,.2f}")
             st.dataframe(df, use_container_width=True)
 
-    # --- Tab 3: Summary ---
+        # --- Tab 3: Summary ---
     with tabs[2]:
         st.subheader("Portfolio Summary")
 
@@ -101,7 +101,14 @@ def show_portfolio_summary():
             st.error(f"Error fetching portfolio summary: {e}")
             return
 
+        # ✅ Ensure both are lists before combining
+        if isinstance(holdings, dict):
+            holdings = [holdings]
+        if isinstance(positions, dict):
+            positions = [positions]
+
         all_data = holdings + positions
+
         if not all_data:
             st.info("No portfolio data available.")
             return
@@ -112,6 +119,7 @@ def show_portfolio_summary():
             qty = item.get("quantity", 0)
             last_price = item.get("last_price", 0) or 0
 
+            # ✅ Fallback to FMP price
             if not last_price or last_price == 0:
                 last_price = get_latest_price(symbol)
 
